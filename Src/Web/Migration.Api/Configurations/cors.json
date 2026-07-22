@@ -1,0 +1,7 @@
+{
+  "CorsSettings": {
+    "Vue": "http://localhost:5173;https://localhost:5173",
+    "Phone": "",
+    "API": "https://localhost:7109"
+  }
+}

@@ -1,0 +1,14 @@
+Build/Debug/
+Libs/DataToolkit/DataToolkit.Bootstrap/obj/
+Libs/DataToolkit/DataToolkit.BulkTransfer/obj/
+Libs/DataToolkit/DataToolkit.Library/obj/
+Libs/DataToolkit/DataToolkit.Provider.SqlLite/obj/
+Libs/DataToolkit/DataToolkit.Provider.SqlServer/obj/
+Libs/DataToolkit/DataToolkit.Provider.Sybase/obj/
+Src/Core/Application/obj/
+Src/Core/Domain/obj/
+Src/Core/Shared/obj/
+Src/Infrastructure/Infrastructure/obj/
+Src/Web/Migration.Api/obj/
+Src/Infrastructure/Persistence/obj/
+Src/Web/Migration.Api/Logs/

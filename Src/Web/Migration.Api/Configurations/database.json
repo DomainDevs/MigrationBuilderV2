@@ -1,0 +1,26 @@
+{
+  "DatabaseProviders": {
+    "Source": "SqlServer",
+    "Target": "SqlServer",
+    "Workspace": "Sqlite"
+  },
+  "SourceDB": {
+    "Provider": "MSOLEDBSQL.1",
+    "Servidor": "localhost",
+    "BaseDatos": "PRUEBAS",
+    "Usuario": "sqluser",
+    "Password": "skf9nfi7",
+    "PersistSecurityInfo": true
+  },
+  "DestinationDB": {
+    "Provider": "MSOLEDBSQL.1",
+    "Servidor": "localhost",
+    "BaseDatos": "PruebasMigracion2",
+    "Usuario": "sqluser",
+    "Password": "skf9nfi7",
+    "PersistSecurityInfo": true
+  },
+  "Workspace": {
+    "BaseDatos": "Data Source=Data\\Workspace.db"
+  }
+}

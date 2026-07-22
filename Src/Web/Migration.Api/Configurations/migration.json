@@ -1,0 +1,11 @@
+{
+  "Migration": {
+    "JobName": "Migration",
+    "Folders": {
+      "Root": "D:\\Migration",
+      "Artifacts": "Artifacts",
+      "Logs": "Logs",
+      "Reports": "Reports"
+    }
+  }
+}

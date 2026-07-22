@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Repositories\SqlServer\" />
+    <Folder Include="Repositories\Sqlite\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.11" />
+    <PackageReference Include="Scrutor" Version="7.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Libs\DataToolkit\DataToolkit.BulkTransfer\DataToolkit.BulkTransfer.csproj" />
+    <ProjectReference Include="..\..\..\Libs\DataToolkit\DataToolkit.Library\DataToolkit.Library.csproj" />
+    <ProjectReference Include="..\..\..\Libs\DataToolkit\DataToolkit.Provider.SqlLite\DataToolkit.Provider.Sqlite.csproj" />
+    <ProjectReference Include="..\..\..\Libs\DataToolkit\DataToolkit.Provider.SqlServer\DataToolkit.Provider.SqlServer.csproj" />
+    <ProjectReference Include="..\..\Core\Application\Application.csproj" />
+    <ProjectReference Include="..\..\Core\Domain\Domain.csproj" />
+  </ItemGroup>
+
+</Project>

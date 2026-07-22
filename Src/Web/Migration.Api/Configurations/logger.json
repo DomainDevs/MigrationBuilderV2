@@ -1,0 +1,29 @@
+﻿{
+  "Serilog": {
+    "MinimumLevel": {
+      "Default": "Information",
+      "Override": {
+        "Microsoft": "Warning",
+        "Microsoft.Hosting.Lifetime": "Information",
+        "System": "Warning"
+      }
+    },
+    "Properties": {
+      "Application": "PrototypeAPI"
+    },
+    "WriteTo": [
+      {
+        "Name": "File",
+        "Args": {
+          "path": "Logs/logs.json",
+          "formatter": "Serilog.Formatting.Json.JsonFormatter, Serilog",
+          "rollingInterval": "Day",
+          "fileSizeLimitBytes": 10485760,
+          "rollOnFileSizeLimit": true,
+          "retainedFileCountLimit": 5,
+          "restrictedToMinimumLevel": "Information"
+        }
+      }
+    ]
+  }
+}
