@@ -61,6 +61,42 @@ public sealed class SqliteDatabaseInitializer
 
         CREATE INDEX IF NOT EXISTS IX_PackageExecution_Status
             ON PackageExecution(Status);
+        
+        CREATE TABLE IF NOT EXISTS PackageExecutionStep
+        (
+            StepExecutionId INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            ExecutionId     INTEGER      NOT NULL,
+
+            StepName        TEXT         NOT NULL,
+
+            Status          TEXT         NOT NULL
+                CHECK (Status IN
+                (
+                    'Pending',
+                    'Running',
+                    'Completed',
+                    'Failed',
+                    'Skipped'
+                )),
+
+            StartTime       DATETIME     NULL,
+            EndTime         DATETIME     NULL,
+            DurationMs      INTEGER      NULL,
+
+            Message         TEXT         NULL,
+
+            FOREIGN KEY (ExecutionId)
+                REFERENCES PackageExecution (ExecutionId)
+                ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS IX_PackageExecutionStep_ExecutionId
+            ON PackageExecutionStep (ExecutionId);
+
+        CREATE INDEX IF NOT EXISTS IX_PackageExecutionStep_Status
+            ON PackageExecutionStep (Status);
+
         """;
     }
 }

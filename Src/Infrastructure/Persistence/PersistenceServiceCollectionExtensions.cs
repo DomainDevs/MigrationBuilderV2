@@ -21,10 +21,7 @@ public static class PersistenceServiceCollectionExtensions
         // 2. Configuración de motor/conexión
         services.AddBuilderDataToolkit(config);
 
-        // 3. Registro de Repositorios 
-        //Visualizar diagnóstico si isDev = true
-        //y enableVerboseLogs = true para decidir si realmente se imprime
-        //services.AddRepositories(enableVerboseLogs); //lo hace boostrap
+        //3. Repositorios (Automatico boostrap).
 
         return services;
     }

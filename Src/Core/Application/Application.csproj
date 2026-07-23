@@ -9,15 +9,15 @@
   <ItemGroup>
     <Folder Include="Features\Migration\" />
     <Folder Include="Features\Metadata\" />
-    <Folder Include="Features\Authentication\" />
-    <Folder Include="Features\Users\" />
-    <Folder Include="UseCases\" />
+    <Folder Include="Features\Project\Commands\" />
+    <Folder Include="Features\Project\DTOs\" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="FluentValidation" Version="12.1.1" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <PackageReference Include="MediatR" Version="14.2.0" />
+    <PackageReference Include="Riok.Mapperly" Version="4.3.1" />
     <PackageReference Include="Scrutor" Version="7.0.0" />
   </ItemGroup>
 

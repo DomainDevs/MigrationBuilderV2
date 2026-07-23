@@ -31,6 +31,17 @@ public class ResponseDTO<T>
     public T? Data { get; set; } = default;
 
     /// <summary>
+    /// Código funcional del error.
+    /// Permite que clientes identifiquen el tipo de error
+    /// sin depender del texto del mensaje.
+    /// </summary>
+    /// <example>VALIDATION_ERROR</example>
+    /// <example>SQL_CONSTRAINT</example>
+    /// <example>ENTITY_NOT_FOUND</example>
+    [DefaultValue(null)]
+    public string? ErrorCode { get; set; }
+
+    /// <summary>
     /// Lista detallada de errores por campo o regla de validación.
     /// Se usa principalmente para validaciones de modelo o negocio.
     /// </summary>

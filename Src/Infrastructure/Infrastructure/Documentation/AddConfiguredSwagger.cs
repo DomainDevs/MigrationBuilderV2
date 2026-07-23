@@ -2,14 +2,12 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
-using System;
 
 namespace Infrastructure.Documentation;
 
 
-internal static class AddConfiguredSwagger
+public static class AddConfiguredSwagger
 {
     internal static IServiceCollection AddOpenApiDocumentation(this IServiceCollection services, IConfiguration config)
     {
@@ -76,24 +74,29 @@ internal static class AddConfiguredSwagger
         return services;
     }
 
-    internal static IApplicationBuilder UseOpenApiDocumentation(this IApplicationBuilder app, 
-        IConfiguration config,
-        bool isDev = false)
+    public static IApplicationBuilder UseOpenApiDocumentation(
+        this IApplicationBuilder app,
+        IConfiguration config)
     {
-        if (!isDev)
+        var settings = config
+            .GetSection(nameof(SwaggerSettings))
+            .Get<SwaggerSettings>();
+
+        if (settings is null || !settings.Enable)
             return app;
 
-        if (config.GetValue<bool>("SwaggerSettings:Enable"))
+        app.UseSwagger();
+
+        app.UseSwaggerUI(options =>
         {
-            app.UseDeveloperExceptionPage()
-            .UseSwagger()
-            .UseSwaggerUI(config =>
-            {
-                config.SwaggerEndpoint("/swagger/v1/swagger.json", "RealStateSite v1");
-                config.SwaggerEndpoint("/swagger/v2/swagger.json", "RealStateSite v2");
-            }
-            );
-        }
+            options.SwaggerEndpoint(
+                $"/swagger/{settings.Version1}/swagger.json",
+                $"{settings.Title} {settings.Version1}");
+
+            options.SwaggerEndpoint(
+                $"/swagger/{settings.Version2}/swagger.json",
+                $"{settings.Title} {settings.Version2}");
+        });
 
         return app;
     }

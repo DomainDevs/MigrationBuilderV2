@@ -7,6 +7,7 @@ public static class BootstrapExtensions
 {
     public static IServiceCollection AddBootstrap(
         this IServiceCollection services,
+        bool Verbose = false,
         params (Assembly Assembly, string RootNamespace, string TargetNamespace)[] modules)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -26,7 +27,7 @@ public static class BootstrapExtensions
 
         var types = TypeScanner.Scan(bootstrapModules);
 
-        BootstrapRegistrar.Register(services, types);
+        BootstrapRegistrar.Register(services, Verbose, types);
 
         return services;
     }

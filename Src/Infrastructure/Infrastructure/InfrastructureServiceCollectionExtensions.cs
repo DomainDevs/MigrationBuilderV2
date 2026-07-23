@@ -2,6 +2,7 @@
 using Infrastructure.Cors;
 using Infrastructure.Documentation;
 using Infrastructure.Middlewares;
+using Infrastructure.System;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,14 +15,14 @@ public static class InfrastructureServiceCollectionExtensions
     /// <summary>
     /// Registra los componentes necesario de la infraestructura
     /// </summary>
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration config, bool isDev = false)
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration config)
     {
-        if (isDev)
-            services.AddOpenApiDocumentation(config);    // Configura Swagger / OpenAPI
 
         services
+            .AddOpenApiDocumentation(config)            // Configura Swagger / OpenAPI
             .AddCorsPolicy(config)                      // Configura políticas de
             .AddMemoryCache()
+            .AddSystem()
             .AddHttpClient();
 
 
@@ -38,12 +39,6 @@ public static class InfrastructureServiceCollectionExtensions
             .UseConfiguredCors()
             .UseAuthentication()
             .UseAuthorization();
-
-        // Condicionamos Swagger
-        if (isDev)
-        {
-            builder.UseOpenApiDocumentation(config, isDev);
-        }
 
         return builder; // <--- Ahora el return es EXPLÍCITO y necesario
     }

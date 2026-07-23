@@ -21,6 +21,20 @@
     "PersistSecurityInfo": true
   },
   "Workspace": {
-    "BaseDatos": "Data Source=Data\\Workspace.db"
+    "BaseDatos": "Data Source=D:\\Devs\\Empresa\\MigrationBuilderV2Ready\\Build\\Debug\\Data\\Workspace.db"
+  },
+  "DataToolkit": {
+    "Logging": {
+      "Enabled": true
+    },
+    "Telemetry": {
+      "Enabled": true,
+      "SlowMs": 500
+    },
+    "Retry": {
+      "Enabled": true,
+      "MaxRetries": 3,
+      "BaseDelayMs": 200
+    }
   }
 }

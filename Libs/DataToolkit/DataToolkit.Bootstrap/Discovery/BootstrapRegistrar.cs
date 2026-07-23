@@ -8,11 +8,12 @@ internal static class BootstrapRegistrar
 {
     internal static void Register(
         IServiceCollection services,
+        bool Verbose,
         IEnumerable<CandidateType> candidates)
     {
         BootstrapConsole.Header();
 
-        var stopwatch = Stopwatch.StartNew();
+        Stopwatch stopwatch = Stopwatch.StartNew();
 
         List<CandidateType> registrations =
             candidates as List<CandidateType> ?? new(candidates);
@@ -22,23 +23,36 @@ internal static class BootstrapRegistrar
 
         int registered = 0;
 
-        foreach (var candidate in registrations)
+        for (int i = 0; i < registrations.Count; i++)
         {
-            bool wasRegistered = false;
-            string? lifetimeName = null;
+            CandidateType candidate = registrations[i];
 
-            foreach (Type service in candidate.Services)
+            Type implementation = candidate.Implementation;
+
+            ServiceLifetime lifetime =
+                candidate.Registration.Lifetime;
+
+            string lifetimeName =
+                lifetime.ToString();
+
+            bool wasRegistered = false;
+
+            IReadOnlyList<Type> servicesToRegister =
+                candidate.Services;
+
+            for (int j = 0; j < servicesToRegister.Count; j++)
             {
+                Type service = servicesToRegister[j];
+
                 services.Add(new ServiceDescriptor(
                     service,
-                    candidate.Implementation,
-                    candidate.Registration.Lifetime));
+                    implementation,
+                    lifetime));
 
-                lifetimeName ??= candidate.Registration.Lifetime.ToString();
-
+                if(Verbose)
                 BootstrapConsole.Registered(
-                    service.Name,
-                    candidate.Implementation.Name,
+                    service,
+                    implementation,
                     lifetimeName);
 
                 wasRegistered = true;
@@ -47,15 +61,13 @@ internal static class BootstrapRegistrar
             if (candidate.Registration.RegisterAsSelf)
             {
                 services.Add(new ServiceDescriptor(
-                    candidate.Implementation,
-                    candidate.Implementation,
-                    candidate.Registration.Lifetime));
-
-                lifetimeName ??= candidate.Registration.Lifetime.ToString();
+                    implementation,
+                    implementation,
+                    lifetime));
 
                 BootstrapConsole.Registered(
-                    candidate.Implementation.Name,
-                    candidate.Implementation.Name,
+                    implementation,
+                    implementation,
                     lifetimeName);
 
                 wasRegistered = true;

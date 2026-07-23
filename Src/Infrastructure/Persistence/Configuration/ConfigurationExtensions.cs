@@ -15,9 +15,9 @@ public static class ConfigurationExtensions
 
         return new Dictionary<string, string?>
         {
-            ["Source"] = source?.BuildConnectionStringSql(),
-            ["Target"] = target?.BuildConnectionStringSql(),
-            ["Workspace"] = configuration["Workspace:BaseDatos"]
+            ["ConnectionStrings:Source"] = source?.BuildConnectionStringSql(),
+            ["ConnectionStrings:Target"] = target?.BuildConnectionStringSql(),
+            ["ConnectionStrings:Workspace"] = configuration["Workspace:BaseDatos"]
         };
     }
 }

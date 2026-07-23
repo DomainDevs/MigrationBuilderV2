@@ -12,3 +12,4 @@ Src/Infrastructure/Infrastructure/obj/
 Src/Web/Migration.Api/obj/
 Src/Infrastructure/Persistence/obj/
 Src/Web/Migration.Api/Logs/
+.vs/

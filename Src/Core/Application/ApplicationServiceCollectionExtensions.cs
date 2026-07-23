@@ -1,7 +1,6 @@
 ﻿using Application.Common.Behaviors;
 using FluentValidation;
 using MediatR;
-using Application.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Application;
@@ -25,14 +24,7 @@ public static class ApplicationServiceCollectionExtensions
             typeof(ValidationBehavior<,>) // Ya no necesitas la ruta larga
         );
 
-        /*Lo hace boostrap
-        // 4. Registro de servicios (Scrutor)
-        // Diagnóstico (isDev & enableVerboseLogs y filtro por nombre filter)
-        services.AddServices(
-            isDev,
-            enableVerboseLogs,
-            filter);
-        */
+        //4. Servicios de aplicacion (Automatico boostrap).
 
         return services;
     }

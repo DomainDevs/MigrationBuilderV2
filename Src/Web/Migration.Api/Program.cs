@@ -2,15 +2,17 @@ using App.Configurations;
 using Application;
 using Infrastructure;
 using Infrastructure.Common.Diagnostics;
+using Shared.Options;
 using Persistence;
 using Serilog;
+using Infrastructure.Documentation;
 
 try
 {
     WebApplicationBuilder builder 
         = WebApplication.CreateBuilder(args);
 
-    Log.Information("Servicio iniciando...");
+    Log.Information("Servicio iniciando" );
 
     // ---------------------------------------------------------------------
     // Configuration
@@ -18,22 +20,26 @@ try
     builder.AddConfigurations();
     builder.Host.UseSerilog((ctx, lc) => lc.ReadFrom.Configuration(ctx.Configuration));
 
+    builder.Services.Configure<MigrationOptions>(
+        builder.Configuration.GetSection(MigrationOptions.SectionName));
+
     // ---------------------------------------------------------------------
     // Service Registration (Manual)
     // ---------------------------------------------------------------------
-    bool isDev = builder.Environment.IsDevelopment();
     builder.Services
-        .AddInfrastructure(builder.Configuration, isDev)
+        .AddInfrastructure(builder.Configuration)
         .AddPersistence(builder.Configuration)
         .AddApplication();
+
 
     // ---------------------------------------------------------------------
     // Service Registration (Automatic)
     // ---------------------------------------------------------------------
     builder.Services.AddBootstrap(
-        (typeof(Application.AssemblyReference).Assembly, "Application.Features","Services"),
-        (typeof(Persistence.AssemblyReference).Assembly, "Persistence", "Repositories")
-        );
+        false,
+        (typeof(Application.AssemblyReference).Assembly, "Application.Features", "Handlers"),
+        (typeof(Persistence.AssemblyReference).Assembly, "Persistence.Repositories", "Workspace")
+    );
 
     builder.Services.AddControllers();
 
@@ -45,7 +51,13 @@ try
     // ---------------------------------------------------------------------
     // Middleware / Startup
     // ---------------------------------------------------------------------
-    app.UseInfrastructure(builder.Configuration, isDev);
+    app.UseInfrastructure(builder.Configuration);
+
+    // Swagger
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseOpenApiDocumentation(builder.Configuration);
+    }
     await app.UsePersistenceAsync();
 
     // ---------------------------------------------------------------------

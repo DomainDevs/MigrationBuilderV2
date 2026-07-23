@@ -5,6 +5,9 @@ namespace DataToolkit.Bootstrap.Diagnostics;
 
 internal static class BootstrapConsole
 {
+    private const string Separator =
+        "----------------------------------------";
+
     private static readonly StringBuilder Buffer = new(1024);
 
     static BootstrapConsole()
@@ -24,14 +27,14 @@ internal static class BootstrapConsole
 
     [Conditional("DEBUG")]
     internal static void Registered(
-        string service,
-        string implementation,
+        Type service,
+        Type implementation,
         string lifetime)
     {
         Buffer.Append("🧩 ");
-        Buffer.Append(service);
+        Buffer.Append(TypeDisplay.GetName(service));
         Buffer.Append(" -> ");
-        Buffer.Append(implementation);
+        Buffer.Append(TypeDisplay.GetName(implementation));
         Buffer.Append(" (");
         Buffer.Append(lifetime);
         Buffer.AppendLine(")");
@@ -39,11 +42,11 @@ internal static class BootstrapConsole
 
     [Conditional("DEBUG")]
     internal static void Skipped(
-        string implementation,
+        Type implementation,
         string reason)
     {
         Buffer.Append("[SKIP] ");
-        Buffer.Append(implementation);
+        Buffer.Append(TypeDisplay.GetName(implementation));
         Buffer.Append(" (");
         Buffer.Append(reason);
         Buffer.AppendLine(")");
@@ -51,11 +54,11 @@ internal static class BootstrapConsole
 
     [Conditional("DEBUG")]
     internal static void Error(
-        string implementation,
+        Type implementation,
         Exception exception)
     {
         Buffer.Append("⚠️ [ERROR] ");
-        Buffer.AppendLine(implementation);
+        Buffer.AppendLine(TypeDisplay.GetName(implementation));
         Buffer.Append("     ");
         Buffer.AppendLine(exception.Message);
     }
@@ -66,13 +69,16 @@ internal static class BootstrapConsole
         int skipped,
         double nanoseconds)
     {
-        Buffer.AppendLine();
-        Buffer.AppendLine("--------------- Summary ----------------");
+        //Buffer.AppendLine();
+        Buffer.AppendLine(Separator);
+
         Buffer.Append("Registered : ");
-        Buffer.AppendLine(registered.ToString());
+        Buffer.Append(registered);
+        Buffer.AppendLine();
 
         Buffer.Append("Skipped    : ");
-        Buffer.AppendLine(skipped.ToString());
+        Buffer.Append(skipped);
+        Buffer.AppendLine();
 
         Buffer.Append("Elapsed    : ");
         Buffer.Append(FormatElapsed(nanoseconds));
@@ -80,33 +86,41 @@ internal static class BootstrapConsole
         Buffer.Append(nanoseconds.ToString("N0"));
         Buffer.AppendLine(" ns)");
 
-        Buffer.AppendLine("----------------------------------------");
+        Buffer.AppendLine(Separator);
         Buffer.AppendLine();
 
+        ConsoleColor previousColor = Console.ForegroundColor;
+
         Console.ForegroundColor = ConsoleColor.Yellow;
-
-        Console.Write(Buffer.ToString());
-
-        Console.ResetColor();
+        Console.Write(Buffer);
+        Console.ForegroundColor = previousColor;
     }
 
     private static string FormatElapsed(double nanoseconds)
     {
-        if (nanoseconds < 1_000)
+        if (nanoseconds < 1_000d)
         {
-            return $"{nanoseconds:N0} ns";
+            return string.Concat(
+                nanoseconds.ToString("N0"),
+                " ns");
         }
 
-        if (nanoseconds < 1_000_000)
+        if (nanoseconds < 1_000_000d)
         {
-            return $"{nanoseconds / 1_000:N2} µs";
+            return string.Concat(
+                (nanoseconds / 1_000d).ToString("N2"),
+                " µs");
         }
 
-        if (nanoseconds < 1_000_000_000)
+        if (nanoseconds < 1_000_000_000d)
         {
-            return $"{nanoseconds / 1_000_000:N2} ms";
+            return string.Concat(
+                (nanoseconds / 1_000_000d).ToString("N2"),
+                " ms");
         }
 
-        return $"{nanoseconds / 1_000_000_000:N2} s";
+        return string.Concat(
+            (nanoseconds / 1_000_000_000d).ToString("N2"),
+            " s");
     }
 }

@@ -1,3 +1,4 @@
+using DataToolkit.Bootstrap.Exceptions;
 using System.Reflection;
 
 namespace DataToolkit.Bootstrap.Discovery;
@@ -10,9 +11,10 @@ internal static class TypeScanner
         ArgumentNullException.ThrowIfNull(modules);
 
         List<CandidateType> result = new(64);
-
         foreach (BootstrapModule module in modules)
         {
+            int matches = 0;
+
             foreach (Type type in GetLoadableTypes(module.Assembly))
             {
                 if (!IsCandidate(type))
@@ -37,7 +39,17 @@ internal static class TypeScanner
                     type,
                     GetPublicInterfaces(type),
                     registration));
+                
+                matches++;
             }
+
+            if (matches == 0)
+            {
+                throw new BootstrapConfigurationException(
+                    $"No se encontró ningún tipo público registrable en el módulo '{module.RootNamespace}' " +
+                    $"con TargetNamespace '{module.TargetNamespace}' dentro del ensamblado '{module.Assembly.GetName().Name}'.");
+            }
+
         }
 
         return result;
