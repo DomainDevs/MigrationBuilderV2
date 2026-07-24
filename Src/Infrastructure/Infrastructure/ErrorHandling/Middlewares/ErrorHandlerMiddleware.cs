@@ -4,7 +4,7 @@ using Shared.DTOs;
 using Shared.Exceptions;
 using System.Net;
 
-namespace Infrastructure.Middlewares;
+namespace Infrastructure.ErrorHandling.Middlewares;
 
 /// <summary>
 /// Middleware responsable de capturar todas las excepciones no controladas,

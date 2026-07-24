@@ -1,6 +1,7 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using Infrastructure.ErrorHandling.Middlewares;
+using Microsoft.AspNetCore.Builder;
 
-namespace Infrastructure.Middlewares;
+namespace Infrastructure.ErrorHandling;
 
 public static class AddMiddlewareExtensions
 {

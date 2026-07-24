@@ -4,7 +4,7 @@ using System.Linq.Expressions;
 using Domain.Entities.Workspace;
 using Application.Abstractions.Persistence.Workspace;
 
-namespace Persistence.Repositories.Workspace;
+namespace Persistence.Workspace.Repositories;
 
 public sealed class PackageExecutionRepository : IPackageExecutionRepository
 {

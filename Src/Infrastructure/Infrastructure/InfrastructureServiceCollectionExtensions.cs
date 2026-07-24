@@ -1,7 +1,6 @@
-﻿// Infrastructure/DependencyInjection.cs
-using Infrastructure.Cors;
+﻿using Infrastructure.Cors;
 using Infrastructure.Documentation;
-using Infrastructure.Middlewares;
+using Infrastructure.ErrorHandling;
 using Infrastructure.System;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;

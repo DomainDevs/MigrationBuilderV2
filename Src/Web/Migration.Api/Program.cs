@@ -38,7 +38,8 @@ try
     builder.Services.AddBootstrap(
         false,
         (typeof(Application.AssemblyReference).Assembly, "Application.Features", "Handlers"),
-        (typeof(Persistence.AssemblyReference).Assembly, "Persistence.Repositories", "Workspace")
+        (typeof(Persistence.AssemblyReference).Assembly, "Persistence", "Repositories"),
+        (typeof(Persistence.AssemblyReference).Assembly, "Persistence", "Services")
     );
 
     builder.Services.AddControllers();

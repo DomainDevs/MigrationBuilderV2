@@ -3,16 +3,13 @@ using DataToolkit.Library.UnitOfWorkLayer;
 
 namespace Persistence.Connect.Context;
 
-public sealed class SqlServerContext
+public sealed class SqliteContext
 {
-    public IUnitOfWork Source { get; }
-
-    public IUnitOfWork Target { get; }
-
-    public SqlServerContext(
+    public IUnitOfWork Workspace { get; }
+    public SqliteContext(
         IDbConnectionFactory factory)
     {
-        Source = new UnitOfWork(factory, "Source");
-        Target = new UnitOfWork(factory, "Target");
+        Workspace = new UnitOfWork(factory, "Workspace");
     }
+
 }

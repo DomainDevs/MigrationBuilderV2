@@ -8,7 +8,7 @@ internal static class BootstrapRegistrar
 {
     internal static void Register(
         IServiceCollection services,
-        bool Verbose,
+        bool verbose,
         IEnumerable<CandidateType> candidates)
     {
         BootstrapConsole.Header();
@@ -23,10 +23,8 @@ internal static class BootstrapRegistrar
 
         int registered = 0;
 
-        for (int i = 0; i < registrations.Count; i++)
+        foreach (CandidateType candidate in registrations)
         {
-            CandidateType candidate = registrations[i];
-
             Type implementation = candidate.Implementation;
 
             ServiceLifetime lifetime =
@@ -36,39 +34,68 @@ internal static class BootstrapRegistrar
                 lifetime.ToString();
 
             bool wasRegistered = false;
+            bool registeredAsSelf = false;
 
             IReadOnlyList<Type> servicesToRegister =
                 candidate.Services;
 
-            for (int j = 0; j < servicesToRegister.Count; j++)
+            // Registrar por interfaces (si existen)
+            foreach (Type service in servicesToRegister)
             {
-                Type service = servicesToRegister[j];
-
                 services.Add(new ServiceDescriptor(
                     service,
                     implementation,
                     lifetime));
 
-                if(Verbose)
-                BootstrapConsole.Registered(
-                    service,
-                    implementation,
-                    lifetimeName);
+                if (verbose)
+                {
+                    BootstrapConsole.Registered(
+                        service,
+                        implementation,
+                        lifetimeName);
+                }
 
                 wasRegistered = true;
             }
 
-            if (candidate.Registration.RegisterAsSelf)
+            // Si no tiene interfaces, registrar la implementación.
+            if (servicesToRegister.Count == 0)
             {
                 services.Add(new ServiceDescriptor(
                     implementation,
                     implementation,
                     lifetime));
 
-                BootstrapConsole.Registered(
+                if (verbose)
+                {
+                    BootstrapConsole.Registered(
+                        implementation,
+                        implementation,
+                        lifetimeName);
+                }
+
+                wasRegistered = true;
+                registeredAsSelf = true;
+            }
+
+            // Si el usuario pidió RegisterAsSelf,
+            // registrar también la implementación,
+            // evitando duplicados cuando ya fue registrada automáticamente.
+            if (candidate.Registration.RegisterAsSelf &&
+                !registeredAsSelf)
+            {
+                services.Add(new ServiceDescriptor(
                     implementation,
                     implementation,
-                    lifetimeName);
+                    lifetime));
+
+                if (verbose)
+                {
+                    BootstrapConsole.Registered(
+                        implementation,
+                        implementation,
+                        lifetimeName);
+                }
 
                 wasRegistered = true;
             }
