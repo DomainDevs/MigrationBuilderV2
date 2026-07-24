@@ -1,9 +1,9 @@
 ﻿using DataToolkit.Library.Common;
-using DataToolkit.Library.Connections;
-using DataToolkit.Provider.SqlServer.Resilience;
-using DataToolkit.Provider.SqlServer.Connections.Providers;
-using Microsoft.Extensions.DependencyInjection;
+using DataToolkit.Library.Connections.Providers;
 using DataToolkit.Library.Extensions.Resilience;
+using DataToolkit.Provider.SqlServer.Connections.Providers;
+using DataToolkit.Provider.SqlServer.Resilience;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DataToolkit.Provider.SqlServer.Extensions;
 
@@ -24,8 +24,8 @@ public static class SqlServerServiceCollectionExtensions
                 );
         });
 
-        services.AddScoped<IDbConnectionFactory,
-            SqlServerConnectionFactory>();
+        //services.AddScoped<IDbConnectionFactory, SqlServerConnectionFactory>();
+        services.AddScoped<IDatabaseProvider, SqlServerProvider>();
 
         return services;
     }

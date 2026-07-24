@@ -1,5 +1,5 @@
 ﻿using DataToolkit.Library.Common;
-using DataToolkit.Library.Connections;
+using DataToolkit.Library.Connections.Providers;
 using DataToolkit.Library.Extensions.Resilience;
 using DataToolkit.Provider.Sybase.Connections.Providers;
 using DataToolkit.Provider.Sybase.Resilience;
@@ -22,8 +22,8 @@ public static class SybaseServiceCollectionExtensions
                 opt.Retry.BaseDelayMs);
         });
 
-        services.AddScoped<IDbConnectionFactory,
-            SybaseConnectionFactory>();
+        //services.AddScoped<IDbConnectionFactory, SybaseConnectionFactory>();
+        services.AddScoped<IDatabaseProvider, SybaseProvider>();
 
         return services;
     }

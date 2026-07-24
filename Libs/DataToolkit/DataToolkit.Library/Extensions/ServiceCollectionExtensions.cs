@@ -51,6 +51,11 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<RetryExecutor>();
 
+        // NUEVO
+        services.AddScoped<DatabaseConnectionFactory>();
+        services.AddScoped<IDbConnectionFactory>(sp =>
+            sp.GetRequiredService<DatabaseConnectionFactory>());
+
         services.AddScoped<IUnitOfWork>(sp =>
         {
             var factory =

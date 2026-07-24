@@ -1,5 +1,5 @@
 ﻿using DataToolkit.Library.Common;
-using DataToolkit.Library.Connections;
+using DataToolkit.Library.Connections.Providers;
 using DataToolkit.Library.Extensions.Resilience;
 using DataToolkit.Provider.Sqlite.Connections.Providers;
 using DataToolkit.Provider.Sqlite.Resilience;
@@ -22,9 +22,8 @@ public static class SqliteServiceCollectionExtensions
                 opt.Retry.BaseDelayMs);
         });
 
-        services.AddScoped<
-            IDbConnectionFactory,
-            SqliteConnectionFactory>();
+        //services.AddScoped<IDbConnectionFactory, SqliteConnectionFactory>();
+        services.AddScoped<IDatabaseProvider, SqliteProvider>();
 
         return services;
     }
