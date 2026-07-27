@@ -58,7 +58,7 @@ try
     app.UseInfrastructure(builder.Configuration);
 
     // Swagger
-    if (app.Environment.IsDevelopment())
+    if (builder.Configuration.GetValue<bool>("SwaggerSettings:Enabled")) 
     {
         app.UseOpenApiDocumentation(builder.Configuration);
     }
