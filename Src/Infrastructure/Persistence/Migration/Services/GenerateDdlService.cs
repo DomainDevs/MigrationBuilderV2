@@ -56,7 +56,7 @@ public sealed class GenerateDdlService : IGenerateDdlService
                 : "STG";
 
         List<string> generatedFiles = [];
-        List<string> skippedFiles = [];
+        List<string> warnings = [];
 
         int generatedCount = 0;
         int skippedCount = 0;
@@ -86,17 +86,23 @@ public sealed class GenerateDdlService : IGenerateDdlService
                 t => $"{t.Schema}.{t.Name}",
                 StringComparer.OrdinalIgnoreCase);
 
-        foreach (TableMetadata sourceTable in targetMetadata) //sourceMetadata
+        foreach (TableMetadata sourceTable in sourceMetadata)
         {
+            string tableKey =
+                $"{sourceTable.Schema}.{sourceTable.Name}";
+
             string fileName =
                 $"DDL_{sourceTable.Schema}.{artifactPrefix}_{sourceTable.Name}.sql";
 
             if (!targetLookup.TryGetValue(
-                    $"{sourceTable.Schema}.{sourceTable.Name}",
+                    tableKey,
                     out TableMetadata? targetTable))
             {
                 skippedCount++;
-                skippedFiles.Add(fileName);
+
+                warnings.Add(
+                    $"La tabla '{tableKey}' no existe en la base de datos destino.");
+
                 continue;
             }
 
@@ -109,23 +115,20 @@ public sealed class GenerateDdlService : IGenerateDdlService
             string artifactFolder =
                 Path.Combine(
                     outputFolder,
-                    $"{sourceTable.Schema}.{sourceTable.Name}");
+                    tableKey);
 
-            //Builder para generar el archivo Begin.sql
             BeginEndBuilder.BuildBegin(
                 outputFolder,
                 artifactPrefix,
                 sourceTable.Schema,
                 sourceTable.Name);
-            
-            //Builder para generar el archivo End.sql
+
             BeginEndBuilder.BuildEnd(
                 outputFolder,
                 artifactPrefix,
                 sourceTable.Schema,
                 sourceTable.Name);
 
-            //Si no existe, lo crea
             Directory.CreateDirectory(artifactFolder);
 
             string filePath =
@@ -136,7 +139,10 @@ public sealed class GenerateDdlService : IGenerateDdlService
             if (File.Exists(filePath))
             {
                 skippedCount++;
-                skippedFiles.Add(fileName);
+
+                warnings.Add(
+                    $"El archivo '{fileName}' ya existe.");
+
                 continue;
             }
 
@@ -153,7 +159,7 @@ public sealed class GenerateDdlService : IGenerateDdlService
             GeneratedFiles = generatedCount,
             SkippedTables = skippedCount,
             Files = generatedFiles,
-            Warnings = skippedFiles
+            Warnings = warnings
         };
     }
 }
