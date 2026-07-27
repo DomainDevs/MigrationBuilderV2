@@ -21,7 +21,7 @@
     "PersistSecurityInfo": true
   },
   "Workspace": {
-    "BaseDatos": "Data Source=D:\\Devs\\Empresa\\MigrationBuilderV2Ready\\Build\\Debug\\Data\\Workspace.db"
+    "BaseDatos": "Data Source=Data\\Workspace.db"
   },
   "DataToolkit": {
     "Logging": {

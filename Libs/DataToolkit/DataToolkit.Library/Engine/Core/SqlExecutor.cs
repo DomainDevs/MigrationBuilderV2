@@ -434,15 +434,9 @@ internal class SqlExecutor : ISqlExecutor, IDisposable
                 "SQL execution error. Query Length: {Length}",
                 sql?.Length ?? 0);
 
-            #if DEBUG
             // En desarrollo dejamos propagar la excepción original
             // para que Visual Studio rompa exactamente en el origen.
-                throw;
-            #else
-                throw new SqlExecutorException(
-                    $"SQL execution error (Length: {sql?.Length ?? 0})",
-                    ex);
-            #endif
+            throw;
         }
     }
 
@@ -463,16 +457,9 @@ internal class SqlExecutor : ISqlExecutor, IDisposable
                 "SQL async execution error. Query Length: {Length}",
                 sql?.Length ?? 0);
 
-            #if DEBUG
             // En desarrollo dejamos propagar la excepción original
             // para que Visual Studio rompa exactamente en el origen.
-
-                throw;
-            #else
-                throw new SqlExecutorException(
-                    $"SQL async execution error (Length: {sql?.Length ?? 0})",
-                    ex);
-            #endif
+            throw;
         }
     }
 
