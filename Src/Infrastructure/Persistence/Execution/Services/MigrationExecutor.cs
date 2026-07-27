@@ -1,4 +1,5 @@
 ﻿using Application.Abstractions.Execution;
+using Application.Features.Orchestrator.Commands;
 using Application.Features.Orchestrator.DTOs;
 using Microsoft.Extensions.Options;
 using Persistence.Execution.Models;
@@ -24,8 +25,12 @@ public sealed class MigrationExecutor : IMigrationExecutor
     }
 
     public async Task<MigrationExecuteResponse> ExecuteAsync(
-        string projectPath)
+        //string projectPath
+        MigrationExecuteCommand command
+        )
     {
+        string projectPath = command.ProjectName;
+
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
 
 
@@ -41,6 +46,29 @@ public sealed class MigrationExecutor : IMigrationExecutor
 
         IReadOnlyList<MigrationStage> stages =
             _migrationPlanService.GetStages(plan);
+
+        //Filtrar por paquetes seleccionados si se proporcionan en el comando
+        if (command.Packages.Count > 0)
+        {
+            stages = stages
+                .Select(stage =>
+                {
+                    MigrationStage filtered = new()
+                    {
+                        Stage = stage.Stage
+                    };
+
+                    filtered.Packages.AddRange(
+                        stage.Packages.Where(x =>
+                            command.Packages.Contains(
+                                x.Package,
+                                StringComparer.OrdinalIgnoreCase)));
+
+                    return filtered;
+                })
+                .Where(stage => stage.Packages.Count > 0)
+                .ToList();
+        }
 
         foreach (MigrationStage stage in stages.OrderBy(s => s.Stage))
         {

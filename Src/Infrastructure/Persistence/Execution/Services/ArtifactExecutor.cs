@@ -72,6 +72,10 @@ public sealed class ArtifactExecutor
 
         List<string> tables = [table];
 
+        await ValidateForeignKeysAsync(
+            schema,
+            table);
+
         if (artifactType.Equals(
             "SQL",
             StringComparison.OrdinalIgnoreCase))
@@ -192,4 +196,41 @@ public sealed class ArtifactExecutor
             yield return batch.ToString();
         }
     }
+
+    private async Task ValidateForeignKeysAsync(
+        string schema,
+        string table)
+    {
+        List<TableMetadata> tables =
+            await _metadataService.ExtractMetadataAsync(
+                false,
+                schema,
+                [table]);
+
+        TableMetadata metadata = tables.Single();
+
+        IEnumerable<ColumnMetadata> foreignKeys =
+            metadata.Columns
+                .Where(x => !string.IsNullOrWhiteSpace(x.ForeignTable));
+
+        foreach (ColumnMetadata foreignKey in foreignKeys)
+        {
+            string sql = $"""
+            SELECT COUNT(*)
+        FROM [{schema}].[{foreignKey.ForeignTable}]
+        """;
+
+            long total = (await _target.Sql.FromSqlAsync<long>(sql))
+                .Single();
+
+
+            if (total == 0)
+            {
+                throw new InvalidOperationException(
+                    $"No es posible migrar la tabla '{schema}.{table}' porque la tabla padre '{schema}.{foreignKey.ForeignTable}' no contiene registros.");
+            }
+        }
+    }
+
+
 }

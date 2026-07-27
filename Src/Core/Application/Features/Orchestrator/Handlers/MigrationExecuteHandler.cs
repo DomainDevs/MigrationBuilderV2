@@ -20,6 +20,6 @@ public sealed class MigrationExecuteHandler
         MigrationExecuteCommand request,
         CancellationToken cancellationToken)
     {
-        return _migrationExecutor.ExecuteAsync(request.ProjectName);
+        return _migrationExecutor.ExecuteAsync(request);
     }
 }

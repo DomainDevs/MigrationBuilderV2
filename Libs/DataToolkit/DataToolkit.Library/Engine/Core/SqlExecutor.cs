@@ -429,12 +429,20 @@ internal class SqlExecutor : ISqlExecutor, IDisposable
         }
         catch (Exception ex)
         {
-            // 1. Logueo seguro sin exponer parámetros o la consulta completa
-            //_logger.Error(ex, "SQL execution error. Query Length: {Length}", sql?.Length ?? 0);
-            _logger.LogError(ex, "SQL execution error. Query Length: {Length}", sql?.Length ?? 0);
+            _logger.LogError(
+                ex,
+                "SQL execution error. Query Length: {Length}",
+                sql?.Length ?? 0);
 
-            // 2. Pasamos solo la longitud o un mensaje genérico para que el middleware global tampoco filtre el SQL
-            throw new SqlExecutorException($"SQL execution error (Length: {sql?.Length ?? 0})", ex);
+            #if DEBUG
+            // En desarrollo dejamos propagar la excepción original
+            // para que Visual Studio rompa exactamente en el origen.
+                throw;
+            #else
+                throw new SqlExecutorException(
+                    $"SQL execution error (Length: {sql?.Length ?? 0})",
+                    ex);
+            #endif
         }
     }
 
@@ -450,12 +458,21 @@ internal class SqlExecutor : ISqlExecutor, IDisposable
         }
         catch (Exception ex)
         {
-            // 1. Logueo seguro sin exponer parámetros o la consulta completa
-            //_logger.Error(ex, "SQL async execution error. Query Length: {Length}", sql?.Length ?? 0);
-            _logger.LogError(ex, "SQL async execution error. Query Length: {Length}", sql?.Length ?? 0);
+            _logger.LogError(
+                ex,
+                "SQL async execution error. Query Length: {Length}",
+                sql?.Length ?? 0);
 
-            // 2. Pasamos solo la longitud o un mensaje genérico para que el middleware global tampoco filtre el SQL
-            throw new SqlExecutorException($"SQL async execution error (Length: {sql?.Length ?? 0})", ex);
+            #if DEBUG
+            // En desarrollo dejamos propagar la excepción original
+            // para que Visual Studio rompa exactamente en el origen.
+
+                throw;
+            #else
+                throw new SqlExecutorException(
+                    $"SQL async execution error (Length: {sql?.Length ?? 0})",
+                    ex);
+            #endif
         }
     }
 

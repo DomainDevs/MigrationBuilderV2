@@ -5,5 +5,6 @@ namespace Application.Abstractions.Execution;
 
 public interface IMigrationExecutor
 {
-    Task<MigrationExecuteResponse> ExecuteAsync(string projectPath);
+    //Task<MigrationExecuteResponse> ExecuteAsync(string projectPath);
+    Task<MigrationExecuteResponse> ExecuteAsync(MigrationExecuteCommand command);
 }
