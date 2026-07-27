@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Persistence.Connect;
 using Persistence.Database;
+using DataToolkit.BulkTransfer.DependencyInjection;
 
 namespace Persistence;
 
@@ -21,7 +22,10 @@ public static class PersistenceServiceCollectionExtensions
         // 2. Configuración de motor/conexión
         services.AddBuilderDataToolkit(config);
 
-        //3. Repositorios (Automatico boostrap).
+        //3. Add bulk
+        services.AddBulkTransfer();
+        
+        //4. Repositorios (Automatico boostrap).
 
         return services;
     }

@@ -1,63 +1,82 @@
 using System.Data.Common;
 using DataToolkit.BulkTransfer.Abstractions;
-using DataToolkit.BulkTransfer.Connections;
 using DataToolkit.BulkTransfer.Core;
 using DataToolkit.Library;
 
-namespace DataToolkit.BulkTransfer.Services;
+namespace DataToolkit.BulkTransfer;
 
 public sealed class BulkTransferService : IBulkTransferService
 {
     private readonly IBulkTransferEngine _engine;
-    private readonly IBulkConnectionFactory _factory;
+    private BulkTransferOptions _options;
 
     public BulkTransferService(
-        IBulkTransferEngine engine,
-        IBulkConnectionFactory factory)
+        IBulkTransferEngine engine)
     {
         _engine = engine;
-        _factory = factory;
+        _options = new BulkTransferOptions();
     }
 
-    public async Task<BulkTransferResult> TransferAsync(
-        BulkDataSource source,
-        BulkDataSource target,
-        string extractionQuery,
-        TableMetadata targetTable,
+    public IBulkTransferService WithOptions(
+        Action<BulkTransferOptions> configure)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+
+        var options = new BulkTransferOptions
+        {
+            Timeout = _options.Timeout
+
+            //BatchSize = _options.BatchSize,
+            //BulkCopyTimeout = _options.BulkCopyTimeout,
+            //ExtractionTimeout = _options.ExtractionTimeout
+        };
+
+        configure(options);
+
+        _options = options;
+
+        return this;
+    }
+
+    public async Task TransferAsync(
+        DbConnection source,
+        DbConnection destination,
+        string sql,
+        TableMetadata target,
         CancellationToken cancellationToken = default)
     {
-        await using DbConnection sourceConnection = _factory.Create(source);
-        await using DbConnection targetConnection = _factory.Create(target);
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(destination);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sql);
+        ArgumentNullException.ThrowIfNull(target);
 
-        await sourceConnection.OpenAsync(cancellationToken);
-        await targetConnection.OpenAsync(cancellationToken);
-
-        return await _engine.TransferAsync(
-            sourceConnection,
-            targetConnection,
-            extractionQuery,
-            targetTable,
+        await _engine.TransferAsync(
+            source,
+            destination,
+            sql,
+            target,
+            _options,
             cancellationToken);
     }
 
-    public async Task<BulkTransferResult> TransferAsync(
-        BulkDataSource source,
-        BulkDataSource target,
-        TableMetadata sourceTable,
-        TableMetadata targetTable,
+    public async Task TransferTableAsync(
+        DbConnection source,
+        DbConnection destination,
+        string sourceTable,
+        TableMetadata target,
         CancellationToken cancellationToken = default)
     {
-        await using DbConnection sourceConnection = _factory.Create(source);
-        await using DbConnection targetConnection = _factory.Create(target);
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(destination);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourceTable);
+        ArgumentNullException.ThrowIfNull(target);
 
-        await sourceConnection.OpenAsync(cancellationToken);
-        await targetConnection.OpenAsync(cancellationToken);
-
-        return await _engine.TransferAsync(
-            sourceConnection,
-            targetConnection,
+        await _engine.TransferAsync(
+            source,
+            destination,
             sourceTable,
-            targetTable,
+            target,
+            _options,
             cancellationToken);
     }
 }

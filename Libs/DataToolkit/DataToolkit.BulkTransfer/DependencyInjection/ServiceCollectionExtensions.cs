@@ -1,7 +1,6 @@
 using DataToolkit.BulkTransfer.Abstractions;
 using DataToolkit.BulkTransfer.Connections;
 using DataToolkit.BulkTransfer.Core;
-using DataToolkit.BulkTransfer.Services;
 using DataToolkit.BulkTransfer.SqlServer;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -31,7 +30,7 @@ public static class ServiceCollectionExtensions
 
         // Internal engine
         services.AddTransient<
-            IBulkTransferEngine, 
+            IBulkTransferEngine,
             BulkTransferEngine>();
 
         // Public API

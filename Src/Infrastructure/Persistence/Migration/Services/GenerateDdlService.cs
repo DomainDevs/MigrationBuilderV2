@@ -111,6 +111,20 @@ public sealed class GenerateDdlService : IGenerateDdlService
                     outputFolder,
                     $"{sourceTable.Schema}.{sourceTable.Name}");
 
+            //Builder para generar el archivo Begin.sql
+            BeginEndBuilder.BuildBegin(
+                outputFolder,
+                artifactPrefix,
+                sourceTable.Schema,
+                sourceTable.Name);
+            
+            //Builder para generar el archivo End.sql
+            BeginEndBuilder.BuildEnd(
+                outputFolder,
+                artifactPrefix,
+                sourceTable.Schema,
+                sourceTable.Name);
+
             //Si no existe, lo crea
             Directory.CreateDirectory(artifactFolder);
 
@@ -142,9 +156,4 @@ public sealed class GenerateDdlService : IGenerateDdlService
             Warnings = skippedFiles
         };
     }
-
-    public static KeyValuePair<string, string>[] ConfigureServices() =>
-    [
-        new("Priority", "1")
-    ];
 }

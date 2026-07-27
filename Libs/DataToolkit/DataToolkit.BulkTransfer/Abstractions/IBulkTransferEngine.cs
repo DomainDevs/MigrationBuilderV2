@@ -1,21 +1,23 @@
-using DataToolkit.Library;
 using System.Data.Common;
+using DataToolkit.BulkTransfer.Core;
+using DataToolkit.Library;
 
 namespace DataToolkit.BulkTransfer.Abstractions;
 
 public interface IBulkTransferEngine
 {
-    Task<Core.BulkTransferResult> TransferAsync(
-        DbConnection sourceConnection,
-        DbConnection targetConnection,
-        string source,
-        TableMetadata targetTable,
-        CancellationToken cancellationToken = default);
-
-    Task<Core.BulkTransferResult> TransferAsync(
-        DbConnection sourceConnection,
-        DbConnection targetConnection,
-        TableMetadata sourceTable,
-        TableMetadata targetTable,
-        CancellationToken cancellationToken = default);
+    Task<BulkTransferResult> TransferAsync(
+		DbConnection source, 
+		DbConnection target, 
+		string extraction, 
+		TableMetadata targetTable, 
+		BulkTransferOptions options, 
+		CancellationToken cancellationToken = default);
+    Task<BulkTransferResult> TransferAsync(
+		DbConnection source, 
+		DbConnection target, 
+		TableMetadata sourceTable, 
+		TableMetadata targetTable, 
+		BulkTransferOptions options, 
+		CancellationToken cancellationToken = default);
 }

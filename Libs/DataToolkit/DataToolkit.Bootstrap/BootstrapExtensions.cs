@@ -48,9 +48,7 @@ public static class BootstrapExtensions
             types,
             profiler,
             excluded);
-        Console.WriteLine($"Bootstrap completed. Service collection: {services.Count} Services.");
-
-
+        //Console.WriteLine($"Bootstrap completed. Service collection: {services.Count} Services.");
 
         return services;
     }

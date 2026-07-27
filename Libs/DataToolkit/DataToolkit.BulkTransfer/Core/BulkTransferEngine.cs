@@ -5,7 +5,7 @@ using DataToolkit.Library;
 
 namespace DataToolkit.BulkTransfer.Core;
 
-public sealed class BulkTransferEngine:IBulkTransferEngine
+public sealed class BulkTransferEngine : IBulkTransferEngine
 {
     private readonly IBulkTransferValidator _validator;
     private readonly IBulkTransferReader _reader;
@@ -16,9 +16,9 @@ public sealed class BulkTransferEngine:IBulkTransferEngine
         IBulkTransferReader reader,
         IBulkTransferWriter writer)
     {
-        _validator=validator;
-        _reader=reader;
-        _writer=writer;
+        _validator = validator;
+        _reader = reader;
+        _writer = writer;
     }
 
     public Task<BulkTransferResult> TransferAsync(
@@ -26,24 +26,57 @@ public sealed class BulkTransferEngine:IBulkTransferEngine
         DbConnection target,
         TableMetadata sourceTable,
         TableMetadata targetTable,
-        CancellationToken ct=default)
-        =>TransferAsync(source,target,$"[{sourceTable.Schema}].[{sourceTable.Name}]",targetTable,ct);
+        BulkTransferOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        return TransferAsync(
+            source,
+            target,
+            $"[{sourceTable.Schema}].[{sourceTable.Name}]",
+            targetTable,
+            options,
+            cancellationToken);
+    }
 
     public async Task<BulkTransferResult> TransferAsync(
         DbConnection source,
         DbConnection target,
         string extraction,
         TableMetadata targetTable,
-        CancellationToken ct=default)
+        BulkTransferOptions options,
+        CancellationToken cancellationToken = default)
     {
-        var sw=Stopwatch.StartNew();
-        var sql=BulkSqlBuilder.Normalize(extraction);
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(target);
+        ArgumentNullException.ThrowIfNull(targetTable);
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentException.ThrowIfNullOrWhiteSpace(extraction);
 
-        await using var reader=await _reader.ExecuteReaderAsync(source,sql,ct);
-        _validator.Validate(reader,targetTable);
-        await _writer.WriteAsync(reader,target,targetTable,ct);
+        var stopwatch = Stopwatch.StartNew();
 
-        sw.Stop();
-        return new BulkTransferResult{Success=true,Duration=sw.Elapsed};
+        var sql = BulkSqlBuilder.Normalize(extraction);
+
+        await using var reader = await _reader.ExecuteReaderAsync(
+            source,
+            sql,
+            //options,
+            cancellationToken);
+
+        _validator.Validate(reader, targetTable);
+
+        await _writer.WriteAsync(
+            reader,
+            target,
+            targetTable,
+            options,
+            cancellationToken);
+
+        stopwatch.Stop();
+
+        return new BulkTransferResult
+        {
+            Success = true,
+            Duration = stopwatch.Elapsed
+        };
     }
 }

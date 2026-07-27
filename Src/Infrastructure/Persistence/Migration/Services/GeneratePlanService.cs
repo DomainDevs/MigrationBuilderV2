@@ -90,6 +90,10 @@ public sealed class GeneratePlanService : IGeneratePlanService
                 command.Schema,
                 allTables);
 
+        if (executionPlan.Count == 0)
+            throw new IOException(
+                "No se encontraron tablas válidas para generar el plan de migración.");
+
         MigrationPlan? previousPlan = null;
         if (File.Exists(migrationPlanFile))
         {
@@ -104,23 +108,52 @@ public sealed class GeneratePlanService : IGeneratePlanService
             }
         }
 
+        Dictionary<string, MigrationPackage> previousPackages =
+            previousPlan?.Packages.ToDictionary(
+                p => p.Package,
+                StringComparer.OrdinalIgnoreCase)
+            ?? new(StringComparer.OrdinalIgnoreCase);
+
         var plan = new MigrationPlan
         {
             Version = "1.0",
             Revision = (previousPlan?.Revision ?? 0) + 1,
             GeneratedAt = DateTime.UtcNow,
-            Packages = executionPlan.Select((t, i) => new MigrationPackage
-            {
-                Stage = i + 1,
-                Package = $"{command.Schema}.{t}",
-                Enabled = true,
-                Approved = false
-            }).ToList()
+            Packages = executionPlan
+                .Select((table, index) =>
+                {
+                    string packageName = $"{command.Schema}.{table}";
+
+                    if (previousPackages.TryGetValue(packageName, out MigrationPackage? oldPackage))
+                    {
+                        return new MigrationPackage
+                        {
+                            Stage = index + 1,
+                            Package = packageName,
+                            Enabled = oldPackage.Enabled,
+                            Approved = oldPackage.Approved
+                        };
+                    }
+
+                    return new MigrationPackage
+                    {
+                        Stage = index + 1,
+                        Package = packageName,
+                        Enabled = true,
+                        Approved = false
+                    };
+                })
+                .ToList()
         };
 
         await File.WriteAllTextAsync(
             migrationPlanFile,
-            JsonSerializer.Serialize(plan, new JsonSerializerOptions { WriteIndented = true }));
+            JsonSerializer.Serialize(
+                plan,
+                new JsonSerializerOptions
+                {
+                    WriteIndented = true
+                }));
 
         generatedFiles.Add(migrationPlanFile);
 
@@ -149,15 +182,6 @@ public sealed class GeneratePlanService : IGeneratePlanService
                     command.Schema,
                     command.ArtifactType,
                     executionPlan.ToList()));
-
-        /*CAMBIAR RESPUESTA
-        return new MigrationResponseDto
-        {
-            GeneratedFiles = plan.Packages.Count,
-            SkippedTables = 0,
-            Files = generatedFiles,
-            Warnings = warnings
-        };*/
 
         return new MigrationGenerationResultDto
         {
@@ -203,14 +227,9 @@ public sealed class GeneratePlanService : IGeneratePlanService
 
     }
 
-    public static KeyValuePair<string, string>[] ConfigureServices() =>
-    [
-        new("Priority", "2")
-    ];
-
 }
 
-internal sealed class MigrationPlan
+public sealed class MigrationPlan
 {
     public string Version { get; set; } = "1.0";
     public int Revision { get; set; }
@@ -218,7 +237,7 @@ internal sealed class MigrationPlan
     public List<MigrationPackage> Packages { get; set; } = [];
 }
 
-internal sealed class MigrationPackage
+public sealed class MigrationPackage
 {
     public int Stage { get; set; }
     public string Package { get; set; } = string.Empty;

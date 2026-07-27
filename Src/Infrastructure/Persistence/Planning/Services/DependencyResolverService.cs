@@ -32,7 +32,7 @@ public sealed class DependencyResolverService
 
             List<TableMetadata> metadata =
                 await _metadataService.ExtractMetadataAsync(
-                    true,
+                    false,
                     //source,
                     schema,
                     result.ToList());

@@ -1,0 +1,92 @@
+﻿using Application.Abstractions.Execution;
+using Application.Features.Orchestrator.DTOs;
+using Microsoft.Extensions.Options;
+using Persistence.Execution.Models;
+using Persistence.Migration.Services;
+using Shared.Options;
+
+namespace Persistence.Execution.Services;
+
+public sealed class MigrationExecutor : IMigrationExecutor
+{
+    private readonly MigrationPlanService _migrationPlanService;
+    private readonly PackageExecutor _packageExecutor;
+    private readonly MigrationOptions _options;
+
+    public MigrationExecutor(
+        MigrationPlanService migrationPlanService,
+        PackageExecutor packageExecutor,
+        IOptions<MigrationOptions> options)
+    {
+        _migrationPlanService = migrationPlanService;
+        _packageExecutor = packageExecutor;
+        _options = options.Value;
+    }
+
+    public async Task<MigrationExecuteResponse> ExecuteAsync(
+        string projectPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
+
+
+        //ruta fisica
+        projectPath =
+            Path.Combine(
+                _options.Folders.Root, projectPath);
+
+        MigrationPlan plan =
+            _migrationPlanService.Load(projectPath);
+
+        MigrationExecution execution = new();
+
+        IReadOnlyList<MigrationStage> stages =
+            _migrationPlanService.GetStages(plan);
+
+        foreach (MigrationStage stage in stages.OrderBy(s => s.Stage))
+        {
+            List<Task> tasks = [];
+
+            foreach (MigrationPackage package in stage.Packages)
+            {
+                if (!package.Enabled)
+                    continue;
+
+                //if (!package.Approved)
+                //    continue;
+
+                string packagePath =
+                    Path.Combine(
+                        Path.Combine(projectPath, _options.Folders.MigrationTask),
+                        package.Package);
+
+                PackageExecution packageExecution = new()
+                {
+                    Package = package.Package
+                };
+
+                execution.Packages.Add(packageExecution);
+
+                tasks.Add(
+                    _packageExecutor.ExecuteAsync(
+                        projectPath,
+                        packagePath,
+                        plan,
+                        package,
+                        packageExecution));
+            }
+
+            await Task.WhenAll(tasks);
+        }
+
+        return new MigrationExecuteResponse
+        {
+            Packages = execution.Packages
+                .Select(x => new PackageExecutionDto
+                {
+                    Package = x.Package,
+                    Status = x.Status.ToString()
+                })
+                .ToList()
+        };
+    }
+}
