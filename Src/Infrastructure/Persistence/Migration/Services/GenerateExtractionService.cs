@@ -79,22 +79,25 @@ public sealed class GenerateExtractionService : IGenerateExtractionService
         targetMetadata =
             MetadataNormalizer.NormalizeColumns(targetMetadata);
 
-        Dictionary<string, TableMetadata> targetTables =
-            targetMetadata.ToDictionary(
+        Dictionary<string, TableMetadata> sourceLookup =
+            sourceMetadata.ToDictionary(
                 table => $"{table.Schema}.{table.Name}",
                 StringComparer.OrdinalIgnoreCase);
 
-        foreach (TableMetadata sourceTable in sourceMetadata)
+        foreach (TableMetadata targetTable in targetMetadata)
         {
             string tableKey =
-                $"{sourceTable.Schema}.{sourceTable.Name}";
+                $"{targetTable.Schema}.{targetTable.Name}";
 
-            if (!targetTables.TryGetValue(
+            if (!sourceLookup.TryGetValue(
                     tableKey,
-                    out TableMetadata? targetTable))
+                    out TableMetadata? sourceTable))
             {
+                skippedCount++;
+
                 warnings.Add(
-                    $"La tabla '{tableKey}' no existe en la base de datos destino.");
+                    $"No se generó el script de extracción para '{tableKey}' porque la tabla no existe en la base de datos origen.");
+
                 continue;
             }
 
@@ -109,11 +112,10 @@ public sealed class GenerateExtractionService : IGenerateExtractionService
                     outputFolder,
                     tableKey);
 
-            //Si no existe, lo crea
             Directory.CreateDirectory(artifactFolder);
 
             string fileName =
-                $"SQL_{sourceTable.Schema}.{prefix}_{sourceTable.Name}.sql";
+                $"SQL_{targetTable.Schema}.{prefix}_{targetTable.Name}.sql";
 
             string filePath =
                 Path.Combine(
@@ -123,8 +125,10 @@ public sealed class GenerateExtractionService : IGenerateExtractionService
             if (File.Exists(filePath))
             {
                 skippedCount++;
+
                 warnings.Add(
                     $"El archivo '{fileName}' ya existe.");
+
                 continue;
             }
 

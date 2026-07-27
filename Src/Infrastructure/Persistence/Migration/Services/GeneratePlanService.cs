@@ -158,7 +158,7 @@ public sealed class GeneratePlanService : IGeneratePlanService
         generatedFiles.Add(migrationPlanFile);
 
 
-        //LLAMADO SERVIOS ARTEFACTOS
+        //LLAMADO SERVIOS ARTEFACTOS DDL
         MigrationResponseDto ddlResponse =
             await _generateDdlService.GenerateDdlScriptsAsync(
                 new GenerateDdlCommand(
@@ -167,6 +167,7 @@ public sealed class GeneratePlanService : IGeneratePlanService
                     command.ArtifactType,
                     executionPlan.ToList()));
 
+        //EXTRACCION
         MigrationResponseDto extractionResponse =
             await _generateExtractionService.GenerateExtractionAsync(
                 new GenerateExtractionCommand(
@@ -174,7 +175,7 @@ public sealed class GeneratePlanService : IGeneratePlanService
                     command.Schema,
                     command.ArtifactType,
                     executionPlan.ToList()));
-
+        //LOAD
         MigrationResponseDto loadResponse =
             await _generateLoadService.GenerateLoadAsync(
                 new GenerateLoadCommand(

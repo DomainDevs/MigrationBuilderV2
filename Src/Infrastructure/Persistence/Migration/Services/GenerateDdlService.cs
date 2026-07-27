@@ -81,30 +81,22 @@ public sealed class GenerateDdlService : IGenerateDdlService
         List<TableMetadata> targetMetadata =
             MetadataNormalizer.NormalizeColumns(targetTask.Result);
 
-        Dictionary<string, TableMetadata> targetLookup =
-            targetMetadata.ToDictionary(
+        Dictionary<string, TableMetadata> sourceLookup =
+            sourceMetadata.ToDictionary(
                 t => $"{t.Schema}.{t.Name}",
                 StringComparer.OrdinalIgnoreCase);
 
-        foreach (TableMetadata sourceTable in sourceMetadata)
+        foreach (TableMetadata targetTable in targetMetadata)
         {
             string tableKey =
-                $"{sourceTable.Schema}.{sourceTable.Name}";
+                $"{targetTable.Schema}.{targetTable.Name}";
+
+            sourceLookup.TryGetValue(
+                tableKey,
+                out TableMetadata? sourceTable);
 
             string fileName =
-                $"DDL_{sourceTable.Schema}.{artifactPrefix}_{sourceTable.Name}.sql";
-
-            if (!targetLookup.TryGetValue(
-                    tableKey,
-                    out TableMetadata? targetTable))
-            {
-                skippedCount++;
-
-                warnings.Add(
-                    $"La tabla '{tableKey}' no existe en la base de datos destino.");
-
-                continue;
-            }
+                $"DDL_{targetTable.Schema}.{artifactPrefix}_{targetTable.Name}.sql";
 
             string ddl =
                 DdlBuilder.BuildCreateTable(
@@ -120,14 +112,14 @@ public sealed class GenerateDdlService : IGenerateDdlService
             BeginEndBuilder.BuildBegin(
                 outputFolder,
                 artifactPrefix,
-                sourceTable.Schema,
-                sourceTable.Name);
+                targetTable.Schema,
+                targetTable.Name);
 
             BeginEndBuilder.BuildEnd(
                 outputFolder,
                 artifactPrefix,
-                sourceTable.Schema,
-                sourceTable.Name);
+                targetTable.Schema,
+                targetTable.Name);
 
             Directory.CreateDirectory(artifactFolder);
 
