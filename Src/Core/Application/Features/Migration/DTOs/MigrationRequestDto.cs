@@ -5,8 +5,12 @@ namespace Application.Features.Migration.DTOs;
 
 public class MigrationRequestDto
 {
+    /// <summary>
+    /// Proyecto sobre el que se generarán los artefactos.
+    /// </summary>
+    [DefaultValue("Master")]
+    public string? ProjectName { get; set; }
 
-    /// <summary> 
     /// Esquema a comparar. 
     /// Null = todos los esquemas. 
     /// </summary>

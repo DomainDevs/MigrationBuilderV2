@@ -4,7 +4,7 @@ public sealed class FolderOptions
 {
     public string Root { get; init; } = string.Empty;
 
-    public string Artifacts { get; init; } = string.Empty;
+    public string MigrationTask { get; init; } = string.Empty; //Artifacts
 
     public string Logs { get; init; } = string.Empty;
 

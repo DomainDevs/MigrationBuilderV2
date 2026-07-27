@@ -2,12 +2,25 @@
 
   <PropertyGroup>
 
-    <!-- Todas las DLL y EXE se generar�n aqu� -->
+    <!-- El Producto se genera aqui -->
     <OutDir>$(MSBuildThisFileDirectory)Build\$(Configuration)\</OutDir>
 
     <!-- Evita crear carpetas net9.0, win-x64, etc. -->
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+
+    <!-- Compilación determinística -->
+    <Deterministic>true</Deterministic>
+
+    <!-- Información del ensamblado -->
+    <Company>DataToolkit</Company>
+    <Product>DataToolkit</Product>
+    <Copyright>Copyright © DataToolkit</Copyright>
+
+    <!-- Versionado -->
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
 
   </PropertyGroup>
 

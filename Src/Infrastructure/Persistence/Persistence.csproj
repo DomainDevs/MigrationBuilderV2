@@ -7,6 +7,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Migration\Comparers\**" />
+    <Compile Remove="Migration\Writers\**" />
+    <EmbeddedResource Remove="Migration\Comparers\**" />
+    <EmbeddedResource Remove="Migration\Writers\**" />
+    <None Remove="Migration\Comparers\**" />
+    <None Remove="Migration\Writers\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.11" />
     <PackageReference Include="Scrutor" Version="7.0.0" />
   </ItemGroup>

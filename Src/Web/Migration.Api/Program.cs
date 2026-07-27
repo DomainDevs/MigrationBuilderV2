@@ -1,24 +1,27 @@
 using App.Configurations;
 using Application;
+using DataToolkit.Bootstrap.Diagnostics;
 using Infrastructure;
 using Infrastructure.Common.Diagnostics;
-using Shared.Options;
+using Infrastructure.Documentation;
 using Persistence;
 using Serilog;
-using Infrastructure.Documentation;
+using Shared.Options;
 
 try
 {
     WebApplicationBuilder builder 
         = WebApplication.CreateBuilder(args);
 
+    int hilosLogicos = Environment.ProcessorCount;
     Log.Information("Servicio iniciando" );
 
     // ---------------------------------------------------------------------
     // Configuration
     // ---------------------------------------------------------------------
-    builder.AddConfigurations();
-    builder.Host.UseSerilog((ctx, lc) => lc.ReadFrom.Configuration(ctx.Configuration));
+    builder
+        .AddConfigurations()
+        .Host.UseSerilog((ctx, lc) => lc.ReadFrom.Configuration(ctx.Configuration));
 
     builder.Services.Configure<MigrationOptions>(
         builder.Configuration.GetSection(MigrationOptions.SectionName));
@@ -31,16 +34,16 @@ try
         .AddPersistence(builder.Configuration)
         .AddApplication();
 
-
     // ---------------------------------------------------------------------
     // Service Registration (Automatic)
     // ---------------------------------------------------------------------
     builder.Services.AddBootstrap(
-        false,
+        true,
         (typeof(Application.AssemblyReference).Assembly, "Application.Features", "Handlers"),
         (typeof(Persistence.AssemblyReference).Assembly, "Persistence", "Repositories"),
         (typeof(Persistence.AssemblyReference).Assembly, "Persistence", "Services")
     );
+    
 
     builder.Services.AddControllers();
 
@@ -65,8 +68,9 @@ try
     // Endpoints
     // ---------------------------------------------------------------------
     app.MapControllers();
-
     Log.Information("Servicio iniciando correctamente...");
+
+
     app.Run();
 
 }
@@ -74,7 +78,8 @@ catch (Exception ex) when (!ex.GetType()
     .Name.Equals("StopTheHostException", StringComparison.Ordinal))
 {
     Log.Information(">> Servicio finalizado, error critico!! <<");
-    StartupDiagnostics.LogStartupError(ex);
+    BootstrapDiagnostics.Report(ex);
+    //StartupDiagnostics.LogStartupError(ex);
 }
 finally
 {

@@ -1,8 +1,6 @@
 ﻿using Infrastructure.System.Provisioning;
 using Microsoft.Extensions.Options;
 using Shared.Options;
-using System.IO;
-using System.Xml.Linq;
 
 namespace Infrastructure.System;
 
@@ -40,7 +38,7 @@ public sealed class MigrationProjectInitializer : IMigrationProjectInitializer
 
         provisioning
             .AddDirectory(root)
-            .AddDirectory(Path.Combine(projectPath, _options.Folders.Artifacts))
+            .AddDirectory(Path.Combine(projectPath, _options.Folders.MigrationTask))
             //.AddDirectory(@"D:\Migration\Tables\dbo.mpersona")
             //.AddDirectory(@"D:\Migration\Tables\dbo.mpersona\DDL")
             //.AddDirectory(@"D:\Migration\Tables\dbo.mpersona\EXTRACT")

@@ -1,5 +1,3 @@
 ﻿namespace Application;
 
-public sealed class AssemblyReference
-{
-}
+public sealed class AssemblyReference;

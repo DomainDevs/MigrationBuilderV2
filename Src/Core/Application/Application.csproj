@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Features\Migration\Validator\" />
     <Folder Include="Features\Project\Commands\" />
     <Folder Include="Features\Project\DTOs\" />
   </ItemGroup>

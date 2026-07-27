@@ -1,6 +1,5 @@
 using DataToolkit.Bootstrap.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
-using System.Diagnostics;
 
 namespace DataToolkit.Bootstrap.Discovery;
 
@@ -9,17 +8,28 @@ internal static class BootstrapRegistrar
     internal static void Register(
         IServiceCollection services,
         bool verbose,
-        IEnumerable<CandidateType> candidates)
+        IEnumerable<CandidateType> candidates,
+        BootstrapProfiler profiler,
+        int excluded)
     {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(candidates);
+        ArgumentNullException.ThrowIfNull(profiler);
+
         BootstrapConsole.Header();
 
-        Stopwatch stopwatch = Stopwatch.StartNew();
+        profiler.Start(BootstrapPhase.DescriptorBuild);
+        // Cambia por BootstrapPhase.Preparation cuando renombres el enum.
 
         List<CandidateType> registrations =
             candidates as List<CandidateType> ?? new(candidates);
 
         registrations.Sort(static (x, y) =>
             x.Registration.Priority.CompareTo(y.Registration.Priority));
+
+        profiler.Stop();
+
+        profiler.Start(BootstrapPhase.DiRegistration);
 
         int registered = 0;
 
@@ -106,11 +116,14 @@ internal static class BootstrapRegistrar
             }
         }
 
-        stopwatch.Stop();
+        profiler.Stop();
 
         BootstrapConsole.Summary(
             registered,
-            0,
-            stopwatch.Elapsed.TotalNanoseconds);
+            excluded,
+            profiler.Total.TotalNanoseconds);
+
+        BootstrapConsole.Performance(
+            profiler);
     }
 }

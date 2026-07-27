@@ -1,28 +1,50 @@
-using DataToolkit.Bootstrap.Exceptions;
 using System.Reflection;
+using DataToolkit.Bootstrap.Diagnostics;
+using DataToolkit.Bootstrap.Exceptions;
 
 namespace DataToolkit.Bootstrap.Discovery;
 
 internal static class TypeScanner
 {
     internal static IReadOnlyCollection<CandidateType> Scan(
-        IEnumerable<BootstrapModule> modules)
+        IEnumerable<BootstrapModule> modules,
+        BootstrapProfiler profiler,
+        out int excluded)
     {
         ArgumentNullException.ThrowIfNull(modules);
+        ArgumentNullException.ThrowIfNull(profiler);
 
         List<CandidateType> result = new(64);
+        excluded = 0;
+
         foreach (BootstrapModule module in modules)
         {
+            string rootNamespace = module.RootNamespace;
+            string rootNamespacePrefix = module.RootNamespacePrefix;
+            string targetNamespace = module.TargetNamespace;
+
             int matches = 0;
 
-            foreach (Type type in GetLoadableTypes(module.Assembly))
+            profiler.Start(BootstrapPhase.AssemblyScan);
+
+            Type[] types = GetLoadableTypes(module.Assembly);
+
+            profiler.Stop();
+
+            profiler.Start(BootstrapPhase.Reflection);
+
+            foreach (Type type in types)
             {
                 if (!IsCandidate(type))
                 {
                     continue;
                 }
 
-                if (!MatchesNamespace(type, module))
+                if (!MatchesNamespace(
+                        type,
+                        rootNamespace,
+                        rootNamespacePrefix,
+                        targetNamespace))
                 {
                     continue;
                 }
@@ -32,6 +54,7 @@ internal static class TypeScanner
 
                 if (registration.Exclude)
                 {
+                    excluded++;
                     continue;
                 }
 
@@ -39,17 +62,18 @@ internal static class TypeScanner
                     type,
                     GetPublicInterfaces(type),
                     registration));
-                
+
                 matches++;
             }
+
+            profiler.Stop();
 
             if (matches == 0)
             {
                 throw new BootstrapConfigurationException(
-                    $"No se encontró ningún tipo público registrable en el módulo '{module.RootNamespace}' " +
-                    $"con TargetNamespace '{module.TargetNamespace}' dentro del ensamblado '{module.Assembly.GetName().Name}'.");
+                    $"No se encontró ningún tipo público registrable en el módulo '{rootNamespace}' " +
+                    $"con TargetNamespace '{targetNamespace}' dentro del ensamblado '{module.Assembly.GetName().Name}'.");
             }
-
         }
 
         return result;
@@ -59,9 +83,15 @@ internal static class TypeScanner
     {
         Type[] interfaces = type.GetInterfaces();
 
-        if (interfaces.Length == 0)
+        switch (interfaces.Length)
         {
-            return interfaces;
+            case 0:
+                return interfaces;
+
+            case 1:
+                return interfaces[0].IsPublic
+                    ? interfaces
+                    : [];
         }
 
         int count = 0;
@@ -85,9 +115,11 @@ internal static class TypeScanner
 
         for (int i = 0; i < interfaces.Length; i++)
         {
-            if (interfaces[i].IsPublic)
+            Type current = interfaces[i];
+
+            if (current.IsPublic)
             {
-                result[index++] = interfaces[i];
+                result[index++] = current;
             }
         }
 
@@ -134,16 +166,19 @@ internal static class TypeScanner
 
     private static bool IsCandidate(Type type)
     {
-        return type.IsClass
-            && !type.IsAbstract
-            && type.IsPublic
-            && !type.IsNested
-            && !type.IsGenericTypeDefinition;
+        return
+            type.IsPublic &&
+            type.IsClass &&
+            !type.IsAbstract &&
+            !type.IsNested &&
+            !type.IsGenericTypeDefinition;
     }
 
     private static bool MatchesNamespace(
         Type type,
-        BootstrapModule module)
+        string rootNamespace,
+        string rootNamespacePrefix,
+        string targetNamespace)
     {
         string? ns = type.Namespace;
 
@@ -152,25 +187,23 @@ internal static class TypeScanner
             return false;
         }
 
-        string rootNamespace = module.RootNamespace;
-
         if (ns != rootNamespace &&
-            !ns.StartsWith(module.RootNamespacePrefix, StringComparison.Ordinal))
+            !ns.StartsWith(rootNamespacePrefix, StringComparison.Ordinal))
         {
             return false;
         }
 
         ReadOnlySpan<char> span = ns.AsSpan();
 
-        int lastSeparator = span.LastIndexOf('.');
+        int separator = span.LastIndexOf('.');
 
         ReadOnlySpan<char> lastSegment =
-            lastSeparator >= 0
-                ? span[(lastSeparator + 1)..]
+            separator >= 0
+                ? span[(separator + 1)..]
                 : span;
 
         return lastSegment.Equals(
-            module.TargetNamespace,
+            targetNamespace,
             StringComparison.Ordinal);
     }
 }

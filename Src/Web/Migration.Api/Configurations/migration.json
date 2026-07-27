@@ -3,7 +3,7 @@
     "JobName": "Migration",
     "Folders": {
       "Root": "D:\\Migration",
-      "Artifacts": "Artifacts",
+      "MigrationTask": "MigrationTask",
       "Logs": "Logs",
       "Reports": "Reports"
     }

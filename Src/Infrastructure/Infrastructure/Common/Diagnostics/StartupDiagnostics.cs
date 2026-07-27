@@ -1,4 +1,5 @@
-﻿using Serilog;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 using System.Diagnostics;
 using System.Text;
 
@@ -82,6 +83,19 @@ public static class StartupDiagnostics
         Console.WriteLine($" [x] FALTANTE : {missingType}");
         Console.WriteLine($" [x] SOLICITA : {consumer}");
 
+        Console.ForegroundColor = ConsoleColor.Yellow;
+
+        if (EsPosibleRegistroPorInterfaz(missingType))
+        {
+            Console.WriteLine();
+            Console.WriteLine(" ANÁLISIS");
+            Console.WriteLine(" El constructor está solicitando una clase concreta.");
+            Console.WriteLine(" Si el servicio fue registrado mediante una interfaz,");
+            Console.WriteLine(" debe inyectarse la interfaz y no la implementación.");
+            Console.WriteLine();
+            Console.WriteLine($" Sugerencia: I{missingType}");
+        }
+
         Console.ForegroundColor = ConsoleColor.Cyan;
 
         Console.WriteLine();
@@ -89,7 +103,7 @@ public static class StartupDiagnostics
         Console.WriteLine("   1. Revisar el registro del servicio.");
         Console.WriteLine("   2. Verificar AddInfrastructure().");
         Console.WriteLine("   3. Verificar AddPersistence().");
-        Console.WriteLine("   4. Confirmar que Bootstrap registró la clase.");
+        Console.WriteLine("   4. Confirmar que el tipo inyectado coincida con el registrado.");
     }
 
     private static void MostrarErrorBaseDatos(Exception root)
@@ -183,5 +197,16 @@ public static class StartupDiagnostics
         Console.WriteLine();
         Console.Write("Presione una tecla para finalizar...");
         Console.ReadKey(intercept: true);
+    }
+
+    private static bool EsPosibleRegistroPorInterfaz(string typeName)
+    {
+        if (string.IsNullOrWhiteSpace(typeName))
+            return false;
+
+        if (typeName.StartsWith('I'))
+            return false;
+
+        return typeName.EndsWith("Service", StringComparison.Ordinal);
     }
 }

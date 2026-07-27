@@ -20,6 +20,29 @@ public class MigrationController : ControllerBase
     }
 
     // =====================================
+    // POST: api/Migration/Plan
+    // =====================================
+    [HttpPost("Plan")]
+    [ProducesResponseType(typeof(ResponseDTO<string>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseDTO<object>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GeneratePlan([FromBody] MigrationRequestDto dto)
+    {
+        if (!ModelState.IsValid)
+        {
+            var errors = ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(e => e.ErrorMessage)
+                .ToList();
+
+            return BadRequest(ApiResponse.Fail("Error de validación", errors));
+        }
+
+        var result = await _mediator.Send(dto.ToGeneratePlanCommand());
+
+        return Ok(ApiResponse.Success(result, "Script de carga generado correctamente"));
+    }
+
+    // =====================================
     // POST: api/Migration/ddl
     // =====================================
     [HttpPost("ddl")]
@@ -42,7 +65,7 @@ public class MigrationController : ControllerBase
         return Ok(ApiResponse.Success(result, "DDL generado correctamente"));
     }
 
-    /*
+    
     // =====================================
     // POST: api/Migration/extraction
     // =====================================
@@ -66,6 +89,32 @@ public class MigrationController : ControllerBase
         return Ok(ApiResponse.Success(result, "Script de extracción generado correctamente"));
     }
 
+
+
+    // =====================================
+    // POST: api/Migration/Load
+    // =====================================
+    [HttpPost("load")]
+    [ProducesResponseType(typeof(ResponseDTO<string>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseDTO<object>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GenerateLoad([FromBody] MigrationRequestDto dto)
+    {
+        if (!ModelState.IsValid)
+        {
+            var errors = ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(e => e.ErrorMessage)
+                .ToList();
+
+            return BadRequest(ApiResponse.Fail("Error de validación", errors));
+        }
+
+        var result = await _mediator.Send(dto.ToGenerateLoadCommand());
+
+        return Ok(ApiResponse.Success(result, "Script de carga generado correctamente"));
+    }
+
+    /*
     // =====================================
     // POST: api/Migration/execution
     // =====================================

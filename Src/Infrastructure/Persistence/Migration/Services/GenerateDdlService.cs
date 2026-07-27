@@ -1,47 +1,150 @@
-﻿using Abstractions.Migration.DDL;
+﻿using Application.Abstractions.Migration;
 using Application.Features.Migration.Commands;
+using Application.Features.Migration.DTOs;
 using DataToolkit.Library;
 using DataToolkit.Library.UnitOfWorkLayer;
+using Domain.Enums;
+using Microsoft.Extensions.Options;
 using Persistence.Connect.Context;
 using Persistence.Metadata.Services;
+using Persistence.Migration.Builders;
+using Persistence.Migration.Metadata;
+using Shared.Options;
 
 namespace Persistence.Migration.Services;
 
 public sealed class GenerateDdlService : IGenerateDdlService
 {
-    private readonly IUnitOfWork _source; //context db1
-    private readonly IUnitOfWork _target; //context db2
+    private readonly IUnitOfWork _source;
+    private readonly IUnitOfWork _target;
     private readonly MetadataService _metadataService;
+    private readonly MigrationOptions _options;
 
-    public GenerateDdlService(SqlServerContext context, MetadataService metadataService)
+    public GenerateDdlService(
+        SqlServerContext context,
+        MetadataService metadataService,
+        IOptions<MigrationOptions> options)
     {
         _source = context.Source;
         _target = context.Target;
         _metadataService = metadataService;
+        _options = options.Value;
     }
 
-    public async Task<string> GenerateDdlScriptsAsync(
-        GenerateDdlCommand generateDdlCommand
-    )
+    public async Task<MigrationResponseDto> GenerateDdlScriptsAsync(
+        GenerateDdlCommand command)
     {
+        string projectPath =
+            Path.Combine(
+                _options.Folders.Root,
+                command.ProjectName);
+
+        if (!Directory.Exists(projectPath))
+        {
+            throw new IOException(
+                $"El proyecto '{projectPath}' no existe.");
+        }
+
+        string outputFolder =
+            Path.Combine(
+                projectPath,
+                _options.Folders.MigrationTask);
+
+        string artifactPrefix =
+            command.ArtifactType == ArtifactType.WorkFile
+                ? "WF"
+                : "STG";
+
         List<string> generatedFiles = [];
+        List<string> skippedFiles = [];
 
-        List<TableMetadata> metadataSource = _metadataService.ExtractMetadataAsync(
-            true,
-            generateDdlCommand.Schema,
-            generateDdlCommand.Tables).Result;
+        int generatedCount = 0;
+        int skippedCount = 0;
 
-        List<TableMetadata> metadataTarget = _metadataService.ExtractMetadataAsync(
-            false,
-            generateDdlCommand.Schema,
-            generateDdlCommand.Tables).Result;
+        Task<List<TableMetadata>> sourceTask =
+            _metadataService.ExtractMetadataAsync(
+                true,
+                command.Schema,
+                command.Tables);
 
-        // Aquí puedes continuar con la lógica de tu método.
-        var outputPath = "";
-        outputPath = "D://"; //_workFileService.pathconfigure();
-        //IOptions<MigrationOptions> options
+        Task<List<TableMetadata>> targetTask =
+            _metadataService.ExtractMetadataAsync(
+                false,
+                command.Schema,
+                command.Tables);
 
-        return "Generado!!";
+        await Task.WhenAll(sourceTask, targetTask);
+
+        List<TableMetadata> sourceMetadata =
+            MetadataNormalizer.NormalizeColumns(sourceTask.Result);
+
+        List<TableMetadata> targetMetadata =
+            MetadataNormalizer.NormalizeColumns(targetTask.Result);
+
+        Dictionary<string, TableMetadata> targetLookup =
+            targetMetadata.ToDictionary(
+                t => $"{t.Schema}.{t.Name}",
+                StringComparer.OrdinalIgnoreCase);
+
+        foreach (TableMetadata sourceTable in targetMetadata) //sourceMetadata
+        {
+            string fileName =
+                $"DDL_{sourceTable.Schema}.{artifactPrefix}_{sourceTable.Name}.sql";
+
+            if (!targetLookup.TryGetValue(
+                    $"{sourceTable.Schema}.{sourceTable.Name}",
+                    out TableMetadata? targetTable))
+            {
+                skippedCount++;
+                skippedFiles.Add(fileName);
+                continue;
+            }
+
+            string ddl =
+                DdlBuilder.BuildCreateTable(
+                    sourceTable,
+                    targetTable,
+                    command.ArtifactType);
+
+            string artifactFolder =
+                Path.Combine(
+                    outputFolder,
+                    $"{sourceTable.Schema}.{sourceTable.Name}");
+
+            //Si no existe, lo crea
+            Directory.CreateDirectory(artifactFolder);
+
+            string filePath =
+                Path.Combine(
+                    artifactFolder,
+                    fileName);
+
+            if (File.Exists(filePath))
+            {
+                skippedCount++;
+                skippedFiles.Add(fileName);
+                continue;
+            }
+
+            await File.WriteAllTextAsync(
+                filePath,
+                ddl);
+
+            generatedCount++;
+            generatedFiles.Add(fileName);
+        }
+
+        return new MigrationResponseDto
+        {
+            GeneratedFiles = generatedCount,
+            SkippedTables = skippedCount,
+            Files = generatedFiles,
+            Warnings = skippedFiles
+        };
     }
 
+    public static KeyValuePair<string, string>[] ConfigureServices() =>
+    [
+        new("Priority", "1")
+    ];
 }

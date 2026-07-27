@@ -1,5 +1,3 @@
 ﻿namespace Persistence;
 
-public sealed class AssemblyReference
-{
-}
+public sealed class AssemblyReference;

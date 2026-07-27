@@ -29,7 +29,7 @@ public class ConnectionConfig
             $"Pooling=true;" +
             $"Min Pool Size=3;" +
             $"Max Pool Size=30;" +
-            $"Connection Timeout=15;" +
+            $"Connection Timeout=120;" +
             $"Application Name=LIB;" +
             $"Language=us_english;" +
             $"Encrypt=True;" +
