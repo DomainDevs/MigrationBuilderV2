@@ -67,183 +67,198 @@ public sealed class GeneratePlanService : IGeneratePlanService
         Directory.CreateDirectory(outputFolder);
 
         try { 
-        string migrationPlanFile = Path.Combine(projectPath, "MigrationPlan.json");
+            string migrationPlanFile = Path.Combine(projectPath, "MigrationPlan.json");
 
-        List<string> generatedFiles = [];
-        List<string> warnings = [];
+            List<string> generatedFiles = [];
+            List<string> warnings = [];
 
-        Logger.Information(
-        "Iniciando generación del plan. Proyecto={Project}, Esquema={Schema}",
-        command.ProjectName,
-        command.Schema);
+            Logger.Information(
+            "Iniciando generación del plan. Proyecto={Project}, Esquema={Schema}",
+            command.ProjectName,
+            command.Schema);
 
-        //Destino
-        List<TableMetadata> metadata = await _metadataService.ExtractMetadataAsync(false, command.Schema, command.Tables);
+            //Destino
+            List<TableMetadata> metadata = await _metadataService.ExtractMetadataAsync(false, command.Schema, command.Tables);
 
-        HashSet<string> existingTables = metadata.Select(t => t.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            HashSet<string> existingTables = metadata.Select(t => t.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        foreach (string table in command.Tables)
-            if (!existingTables.Contains(table))
-                warnings.Add($"La tabla solicitada '{command.Schema}.{table}' no existe en la base de datos.");
+            foreach (string table in command.Tables)
+                if (!existingTables.Contains(table))
+                    warnings.Add($"La tabla solicitada '{command.Schema}.{table}' no existe en la base de datos.");
 
-        var completeTables = await _dependencyResolver.ResolveDependenciesAsync(command.Schema, command.Tables);
+            var completeTables = await _dependencyResolver.ResolveDependenciesAsync(command.Schema, command.Tables);
 
-        var allTables = command.Tables.Union(completeTables, StringComparer.OrdinalIgnoreCase).ToList();
+            var allTables = command.Tables.Union(completeTables, StringComparer.OrdinalIgnoreCase).ToList();
 
-        completeTables = await _dependencyResolver.ResolveDependenciesAsync(command.Schema, allTables);
+            completeTables = await _dependencyResolver.ResolveDependenciesAsync(command.Schema, allTables);
 
-        allTables = allTables.Union(completeTables, StringComparer.OrdinalIgnoreCase).ToList();
+            allTables = allTables.Union(completeTables, StringComparer.OrdinalIgnoreCase).ToList();
 
-        IReadOnlyList<string> executionPlan =
-            await _migrationPlanningService.BuildExecutionPlanStringAsyncStr(
-                _target,
-                command.Schema,
-                allTables);
+            IReadOnlyList<string> executionPlan =
+                await _migrationPlanningService.BuildExecutionPlanStringAsyncStr(
+                    _target,
+                    command.Schema,
+                    allTables);
 
-        if (executionPlan.Count == 0)
-            throw new IOException(
-                "No se encontraron tablas válidas para generar el plan de migración.");
+            if (executionPlan.Count == 0)
+                throw new IOException(
+                    "No se encontraron tablas válidas para generar el plan de migración.");
 
-        Logger.Information(
-        "Antes del plan...",
-        command.ProjectName,
-        command.Schema);
+            Logger.Information(
+            "Antes del plan...",
+            command.ProjectName,
+            command.Schema);
 
-        MigrationPlan? previousPlan = null;
-        if (File.Exists(migrationPlanFile))
-        {
-            try
+            MigrationPlan? previousPlan = null;
+            if (File.Exists(migrationPlanFile))
             {
-                previousPlan = JsonSerializer.Deserialize<MigrationPlan>(
-                    await File.ReadAllTextAsync(migrationPlanFile));
-            }
-            catch
-            {
-                previousPlan = null;
-            }
-        }
-
-        Dictionary<string, MigrationPackage> previousPackages =
-            previousPlan?.Packages.ToDictionary(
-                p => p.Package,
-                StringComparer.OrdinalIgnoreCase)
-            ?? new(StringComparer.OrdinalIgnoreCase);
-
-        var plan = new MigrationPlan
-        {
-            Version = "1.0",
-            Revision = (previousPlan?.Revision ?? 0) + 1,
-            GeneratedAt = DateTime.UtcNow,
-            Packages = executionPlan
-                .Select((table, index) =>
+                try
                 {
-                    string packageName = $"{command.Schema}.{table}";
+                    previousPlan = JsonSerializer.Deserialize<MigrationPlan>(
+                        await File.ReadAllTextAsync(migrationPlanFile));
+                }
+                catch
+                {
+                    previousPlan = null;
+                }
+            }
 
-                    if (previousPackages.TryGetValue(packageName, out MigrationPackage? oldPackage))
+            Dictionary<string, MigrationPackage> previousPackages =
+                previousPlan?.Packages.ToDictionary(
+                    p => p.Package,
+                    StringComparer.OrdinalIgnoreCase)
+                ?? new(StringComparer.OrdinalIgnoreCase);
+
+            var plan = new MigrationPlan
+            {
+                Version = "1.0",
+                Revision = (previousPlan?.Revision ?? 0) + 1,
+                GeneratedAt = DateTime.UtcNow,
+                Packages = executionPlan
+                    .Select((table, index) =>
                     {
+                        string packageName = $"{command.Schema}.{table}";
+
+                        if (previousPackages.TryGetValue(packageName, out MigrationPackage? oldPackage))
+                        {
+                            return new MigrationPackage
+                            {
+                                Stage = index + 1,
+                                Package = packageName,
+                                Enabled = oldPackage.Enabled,
+                                Approved = oldPackage.Approved
+                            };
+                        }
+
                         return new MigrationPackage
                         {
                             Stage = index + 1,
                             Package = packageName,
-                            Enabled = oldPackage.Enabled,
-                            Approved = oldPackage.Approved
+                            Enabled = true,
+                            Approved = false
                         };
-                    }
+                    })
+                    .ToList()
+            };
 
-                    return new MigrationPackage
+            await File.WriteAllTextAsync(
+                migrationPlanFile,
+                JsonSerializer.Serialize(
+                    plan,
+                    new JsonSerializerOptions
                     {
-                        Stage = index + 1,
-                        Package = packageName,
-                        Enabled = true,
-                        Approved = false
-                    };
-                })
-                .ToList()
-        };
+                        WriteIndented = true
+                    }));
 
-        await File.WriteAllTextAsync(
-            migrationPlanFile,
-            JsonSerializer.Serialize(
-                plan,
-                new JsonSerializerOptions
-                {
-                    WriteIndented = true
-                }));
+            generatedFiles.Add(migrationPlanFile);
 
-        generatedFiles.Add(migrationPlanFile);
+            Logger.Information(
+            "iNICIA DDL...",
+            command.ProjectName,
+            command.Schema);
 
-        Logger.Information(
-        "Despues del plan...",
-        command.ProjectName,
-        command.Schema);
+            //LLAMADO SERVIOS ARTEFACTOS DDL
+            MigrationResponseDto ddlResponse =
+                await _generateDdlService.GenerateDdlScriptsAsync(
+                    new GenerateDdlCommand(
+                        command.ProjectName,
+                        command.Schema,
+                        command.ArtifactType,
+                        executionPlan.ToList()));
 
-        //LLAMADO SERVIOS ARTEFACTOS DDL
-        MigrationResponseDto ddlResponse =
-            await _generateDdlService.GenerateDdlScriptsAsync(
-                new GenerateDdlCommand(
-                    command.ProjectName,
-                    command.Schema,
-                    command.ArtifactType,
-                    executionPlan.ToList()));
 
-        //EXTRACCION
-        MigrationResponseDto extractionResponse =
-            await _generateExtractionService.GenerateExtractionAsync(
-                new GenerateExtractionCommand(
-                    command.ProjectName,
-                    command.Schema,
-                    command.ArtifactType,
-                    executionPlan.ToList()));
-        //LOAD
-        MigrationResponseDto loadResponse =
-            await _generateLoadService.GenerateLoadAsync(
-                new GenerateLoadCommand(
-                    command.ProjectName,
-                    command.Schema,
-                    command.ArtifactType,
-                    executionPlan.ToList()));
+            Logger.Information(
+            "INICIA EXTRACCION...",
+            command.ProjectName,
+            command.Schema);
+            //EXTRACCION
+            MigrationResponseDto extractionResponse =
+                await _generateExtractionService.GenerateExtractionAsync(
+                    new GenerateExtractionCommand(
+                        command.ProjectName,
+                        command.Schema,
+                        command.ArtifactType,
+                        executionPlan.ToList()));
 
-        return new MigrationGenerationResultDto
-        {
-            Artifacts =
-            [
-                new MigrationArtifactResultDto
-        {
-            Artifact = "Plan",
-            GeneratedFiles = 1,
-            SkippedFiles = 0,
-            Files = generatedFiles,
-            Warnings = warnings
-        },
+            Logger.Information(
+            "INICIA LOAD...",
+            command.ProjectName,
+            command.Schema);
+            //LOAD
+            MigrationResponseDto loadResponse =
+                await _generateLoadService.GenerateLoadAsync(
+                    new GenerateLoadCommand(
+                        command.ProjectName,
+                        command.Schema,
+                        command.ArtifactType,
+                        executionPlan.ToList()));
+            Logger.Information(
+            "FINALIZA ARTEFACTOS...",
+            command.ProjectName,
+            command.Schema);
 
-        new MigrationArtifactResultDto
-        {
-            Artifact = "DDL",
-            GeneratedFiles = ddlResponse.GeneratedFiles,
-            SkippedFiles = ddlResponse.SkippedTables,
-            Files = ddlResponse.Files,
-            Warnings = ddlResponse.Warnings
-        },
 
-        new MigrationArtifactResultDto
-        {
-            Artifact = "Extraction",
-            GeneratedFiles = extractionResponse.GeneratedFiles,
-            SkippedFiles = extractionResponse.SkippedTables,
-            Files = extractionResponse.Files,
-            Warnings = extractionResponse.Warnings
-        },
+            return new MigrationGenerationResultDto
+            {
+                Artifacts =
+                [
+                    new MigrationArtifactResultDto
+            {
+                Artifact = "Plan",
+                GeneratedFiles = 1,
+                SkippedFiles = 0,
+                Files = generatedFiles,
+                Warnings = warnings
+            },
 
-        new MigrationArtifactResultDto
-        {
-            Artifact = "Load",
-            GeneratedFiles = loadResponse.GeneratedFiles,
-            SkippedFiles = loadResponse.SkippedTables,
-            Files = loadResponse.Files,
-            Warnings = loadResponse.Warnings
-        }
-            ]
-        };
+            new MigrationArtifactResultDto
+            {
+                Artifact = "DDL",
+                GeneratedFiles = ddlResponse.GeneratedFiles,
+                SkippedFiles = ddlResponse.SkippedTables,
+                Files = ddlResponse.Files,
+                Warnings = ddlResponse.Warnings
+            },
+
+            new MigrationArtifactResultDto
+            {
+                Artifact = "Extraction",
+                GeneratedFiles = extractionResponse.GeneratedFiles,
+                SkippedFiles = extractionResponse.SkippedTables,
+                Files = extractionResponse.Files,
+                Warnings = extractionResponse.Warnings
+            },
+
+            new MigrationArtifactResultDto
+            {
+                Artifact = "Load",
+                GeneratedFiles = loadResponse.GeneratedFiles,
+                SkippedFiles = loadResponse.SkippedTables,
+                Files = loadResponse.Files,
+                Warnings = loadResponse.Warnings
+            }
+                ]
+            };
 
         }
         catch(Exception ex)
