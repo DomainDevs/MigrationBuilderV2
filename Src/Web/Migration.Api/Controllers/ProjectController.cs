@@ -35,6 +35,7 @@ public class ProjectController : ControllerBase
     /// Elimina un proyecto existente.
     /// </summary>
     [HttpDelete("{projectName}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
     public async Task<IActionResult> DeleteProject(string projectName)
     {
         bool result = await _mediator.Send(

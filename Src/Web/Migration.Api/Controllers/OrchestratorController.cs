@@ -22,6 +22,7 @@ public sealed class OrchestratorController : ControllerBase
     public async Task<ActionResult<MigrationExecuteResponse>> ExecuteAsync(
         [FromBody] MigrationExecuteCommand command)
     {
+
         MigrationExecuteResponse response =
             await _mediator.Send(command);
 

@@ -1,6 +1,7 @@
 ﻿using Application.Abstractions.Execution;
 using Application.Features.Orchestrator.Commands;
 using Application.Features.Orchestrator.DTOs;
+using MediatR;
 using Microsoft.Extensions.Options;
 using Persistence.Execution.Models;
 using Persistence.Migration.Services;
@@ -25,11 +26,13 @@ public sealed class MigrationExecutor : IMigrationExecutor
     }
 
     public async Task<MigrationExecuteResponse> ExecuteAsync(
-        //string projectPath
         MigrationExecuteCommand command
         )
     {
         string projectPath = command.ProjectName;
+
+        command.Packages.RemoveAll(x =>
+        string.Equals(x, "string", StringComparison.OrdinalIgnoreCase));
 
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
 
