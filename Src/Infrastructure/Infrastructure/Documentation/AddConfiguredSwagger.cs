@@ -35,7 +35,8 @@ public static class AddConfiguredSwagger
         app.UseSwaggerUI(c =>
         {
             //c.SwaggerEndpoint("/swagger/v1/swagger.json", "Migration API v1");
-            c.SwaggerEndpoint("v1/swagger.json", "Migration API v1");
+            //c.SwaggerEndpoint("v1/swagger.json", "Migration API v1");
+            c.SwaggerEndpoint("./v1/swagger.json", "Migration API v1");
 
         });
 
