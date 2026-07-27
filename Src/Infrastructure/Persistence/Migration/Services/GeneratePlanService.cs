@@ -1,14 +1,17 @@
-﻿using System.Text.Json;
-using Application.Abstractions.Migration;
+﻿using Application.Abstractions.Migration;
 using Application.Features.Migration.Commands;
 using Application.Features.Migration.DTOs;
 using DataToolkit.Library;
 using DataToolkit.Library.UnitOfWorkLayer;
 using Microsoft.Extensions.Options;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Persistence.Connect.Context;
 using Persistence.Metadata.Services;
 using Persistence.Planning.Services;
+using Serilog;
+using Serilog.Core;
 using Shared.Options;
+using System.Text.Json;
 
 namespace Persistence.Migration.Services;
 
@@ -23,6 +26,9 @@ public sealed class GeneratePlanService : IGeneratePlanService
     private readonly IGenerateDdlService _generateDdlService;
     private readonly IGenerateExtractionService _generateExtractionService;
     private readonly IGenerateLoadService _generateLoadService;
+
+    private static readonly Serilog.ILogger Logger =
+        Log.ForContext<GeneratePlanService>();
 
     public GeneratePlanService(
         SqlServerContext context,
@@ -60,14 +66,18 @@ public sealed class GeneratePlanService : IGeneratePlanService
         //Si no existe, lo crea
         Directory.CreateDirectory(outputFolder);
 
-        //if (!Directory.Exists(outputFolder))
-        //    throw new IOException($"El directorio de tareas de migración '{outputFolder}' no existe.");
-
+        try { 
         string migrationPlanFile = Path.Combine(projectPath, "MigrationPlan.json");
 
         List<string> generatedFiles = [];
         List<string> warnings = [];
 
+        Logger.Information(
+        "Iniciando generación del plan. Proyecto={Project}, Esquema={Schema}",
+        command.ProjectName,
+        command.Schema);
+
+        //Destino
         List<TableMetadata> metadata = await _metadataService.ExtractMetadataAsync(false, command.Schema, command.Tables);
 
         HashSet<string> existingTables = metadata.Select(t => t.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -93,6 +103,11 @@ public sealed class GeneratePlanService : IGeneratePlanService
         if (executionPlan.Count == 0)
             throw new IOException(
                 "No se encontraron tablas válidas para generar el plan de migración.");
+
+        Logger.Information(
+        "Antes del plan...",
+        command.ProjectName,
+        command.Schema);
 
         MigrationPlan? previousPlan = null;
         if (File.Exists(migrationPlanFile))
@@ -157,6 +172,10 @@ public sealed class GeneratePlanService : IGeneratePlanService
 
         generatedFiles.Add(migrationPlanFile);
 
+        Logger.Information(
+        "Despues del plan...",
+        command.ProjectName,
+        command.Schema);
 
         //LLAMADO SERVIOS ARTEFACTOS DDL
         MigrationResponseDto ddlResponse =
@@ -225,6 +244,17 @@ public sealed class GeneratePlanService : IGeneratePlanService
         }
             ]
         };
+
+        }
+        catch(Exception ex)
+        {
+            Logger.Information(
+            "Despues del plan..." + ex.Message.ToString(),
+            command.ProjectName,
+            command.Schema);
+
+            return null;
+        }
 
     }
 
