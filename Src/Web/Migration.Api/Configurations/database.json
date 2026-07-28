@@ -10,7 +10,8 @@
     "BaseDatos": "PRUEBAS",
     "Usuario": "sqluser",
     "Password": "skf9nfi7",
-    "PersistSecurityInfo": true
+    "PersistSecurityInfo": true,
+    "TimeOut": "90"
   },
   "DestinationDB": {
     "Provider": "MSOLEDBSQL.1",
@@ -18,7 +19,8 @@
     "BaseDatos": "PruebasMigracion2",
     "Usuario": "sqluser",
     "Password": "skf9nfi7",
-    "PersistSecurityInfo": true
+    "PersistSecurityInfo": true,
+    "TimeOut": "90"
   },
   "Workspace": {
     "BaseDatos": "Data Source=Data\\Workspace.db"
