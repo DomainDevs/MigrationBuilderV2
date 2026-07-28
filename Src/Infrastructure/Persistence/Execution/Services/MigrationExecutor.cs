@@ -31,7 +31,6 @@ public sealed class MigrationExecutor : IMigrationExecutor
         )
     {
         string projectPath = command.ProjectName;
-        LogWriterJSON writer = new($"{projectPath}\\Logs\\"); //logPath
         List<LogEntry> logs = [];
 
         command.Packages.RemoveAll(x =>
@@ -43,6 +42,14 @@ public sealed class MigrationExecutor : IMigrationExecutor
         projectPath =
             Path.Combine(
                 _options.Folders.Root, projectPath);
+
+        if (!Directory.Exists(projectPath))
+        {
+            throw new IOException(
+                $"El proyecto '{command.ProjectName}', no se encuentra registrado.");
+        }
+
+        LogWriterJSON writer = new($"{projectPath}\\{_options.Folders.Logs}\\"); 
 
         MigrationPlan plan =
             _migrationPlanService.Load(projectPath);
@@ -111,7 +118,7 @@ public sealed class MigrationExecutor : IMigrationExecutor
             await Task.WhenAll(tasks);
         }
 
-        writer.EscribirLog($"{projectPath}\\Logs\\", logs);
+        writer.EscribirLog($"{projectPath}\\{_options.Folders.Logs}\\", logs);
 
         return new MigrationExecuteResponse
         {
