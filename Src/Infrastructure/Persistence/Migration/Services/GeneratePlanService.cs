@@ -72,11 +72,6 @@ public sealed class GeneratePlanService : IGeneratePlanService
             List<string> generatedFiles = [];
             List<string> warnings = [];
 
-            Logger.Information(
-            "Iniciando generación del plan. Proyecto={Project}, Esquema={Schema}",
-            command.ProjectName,
-            command.Schema);
-
             //Destino
             List<TableMetadata> metadata = await _metadataService.ExtractMetadataAsync(false, command.Schema, command.Tables);
 
@@ -100,14 +95,11 @@ public sealed class GeneratePlanService : IGeneratePlanService
                     command.Schema,
                     allTables);
 
+            executionPlan = executionPlan.Union(allTables, StringComparer.OrdinalIgnoreCase).ToList();
+
             if (executionPlan.Count == 0)
                 throw new IOException(
                     "No se encontraron tablas válidas para generar el plan de migración.");
-
-            Logger.Information(
-            "Antes del plan...",
-            command.ProjectName,
-            command.Schema);
 
             MigrationPlan? previousPlan = null;
             if (File.Exists(migrationPlanFile))
@@ -172,11 +164,6 @@ public sealed class GeneratePlanService : IGeneratePlanService
 
             generatedFiles.Add(migrationPlanFile);
 
-            Logger.Information(
-            "iNICIA DDL...",
-            command.ProjectName,
-            command.Schema);
-
             //LLAMADO SERVIOS ARTEFACTOS DDL
             MigrationResponseDto ddlResponse =
                 await _generateDdlService.GenerateDdlScriptsAsync(
@@ -186,11 +173,6 @@ public sealed class GeneratePlanService : IGeneratePlanService
                         command.ArtifactType,
                         executionPlan.ToList()));
 
-
-            Logger.Information(
-            "INICIA EXTRACCION...",
-            command.ProjectName,
-            command.Schema);
             //EXTRACCION
             MigrationResponseDto extractionResponse =
                 await _generateExtractionService.GenerateExtractionAsync(
@@ -200,10 +182,6 @@ public sealed class GeneratePlanService : IGeneratePlanService
                         command.ArtifactType,
                         executionPlan.ToList()));
 
-            Logger.Information(
-            "INICIA LOAD...",
-            command.ProjectName,
-            command.Schema);
             //LOAD
             MigrationResponseDto loadResponse =
                 await _generateLoadService.GenerateLoadAsync(
@@ -212,11 +190,6 @@ public sealed class GeneratePlanService : IGeneratePlanService
                         command.Schema,
                         command.ArtifactType,
                         executionPlan.ToList()));
-            Logger.Information(
-            "FINALIZA ARTEFACTOS...",
-            command.ProjectName,
-            command.Schema);
-
 
             return new MigrationGenerationResultDto
             {
