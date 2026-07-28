@@ -237,7 +237,7 @@ public sealed class GeneratePlanService : IGeneratePlanService
         catch(Exception ex)
         {
             Logger.Information(
-            "Despues del plan..." + ex.Message.ToString(),
+            "Error: timeout." + ex.Message.ToString(),
             command.ProjectName,
             command.Schema);
 
