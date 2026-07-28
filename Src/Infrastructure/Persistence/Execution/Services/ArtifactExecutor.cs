@@ -5,7 +5,9 @@ using DataToolkit.Library.UnitOfWorkLayer;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
+using Persistence.Configuration;
 using Persistence.Connect.Context;
+using Persistence.Execution.ETL;
 using Persistence.Execution.Validation;
 using Persistence.Metadata.Services;
 using System.Text;
@@ -43,6 +45,29 @@ public sealed class ArtifactExecutor
                 "No se encontró el artefacto.",
                 artifactPath);
         }
+
+        //Para saber si es una ETL o un paquete
+        string extension = Path.GetExtension(artifactPath);
+        switch (extension.ToLowerInvariant())
+        {
+            case ".sql":
+                break;
+
+            case ".dtsx":
+                    ConnectionConfig source =
+                    _configuration.GetSection("SourceDB").Get<ConnectionConfig>()!;
+
+                    ConnectionConfig target =
+                    _configuration.GetSection("DestinationDB").Get<ConnectionConfig>()!;
+
+                    DTExecRunner.EjecutarPaqueteETL(artifactPath, source, target);
+                return;
+
+            default:
+                throw new NotSupportedException(
+                    $"El artefacto '{extension}' no es compatible.");
+        }
+
 
         string sql = await File.ReadAllTextAsync(artifactPath);
 

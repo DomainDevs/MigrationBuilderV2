@@ -1,7 +1,9 @@
 ﻿using Persistence.Execution.Helpers;
+using Persistence.Execution.Log;
 using Persistence.Execution.Models;
 using Persistence.Metadata.Services;
 using Persistence.Migration.Services;
+using Serilog;
 
 namespace Persistence.Execution.Services;
 
@@ -31,6 +33,8 @@ public sealed class PackageExecutor
         ArgumentNullException.ThrowIfNull(package);
         ArgumentNullException.ThrowIfNull(execution);
 
+        LogWriterJSON writer = new($"{projectPath}\\Logs\\"); //logPath
+
         if (!Directory.Exists(packagePath))
         {
             throw new DirectoryNotFoundException(
@@ -51,16 +55,43 @@ public sealed class PackageExecutor
 
         try
         {
+            List<LogEntry> logs = [];
             foreach (string artifact in artifacts)
             {
-                if (execution.Status == ExecutionStatus.Cancelling)
-                {
-                    execution.Status = ExecutionStatus.Cancelled;
-                    return;
-                }
 
-                await _artifactExecutor.ExecuteAsync(artifact);
+                LogEntry log = new()
+                {
+                    NombrePaso = Path.GetFileName(artifact),
+                    Inicio = DateTime.UtcNow
+                };
+                try 
+                { 
+                    if (execution.Status == ExecutionStatus.Cancelling)
+                    {
+                        execution.Status = ExecutionStatus.Cancelled;
+                        return;
+                    }
+
+                    await _artifactExecutor.ExecuteAsync(artifact);
+
+                    log.Exito = true;
+                    log.Mensaje = "OK";
+                }catch (Exception ex)
+                {
+                    log.Exito = false;
+                    log.Mensaje = ex.Message;
+
+                    throw;
+                }finally
+                {
+                    log.Fin = DateTime.UtcNow;
+                    logs.Add(log);
+                    writer.EscribirLog(
+                    Path.GetFileNameWithoutExtension(artifact),
+                    [log]);
+                }
             }
+
 
             execution.Status = ExecutionStatus.Completed;
 
