@@ -241,7 +241,7 @@ public sealed class GeneratePlanService : IGeneratePlanService
             command.ProjectName,
             command.Schema);
 
-            return null;
+            throw;
         }
 
     }
