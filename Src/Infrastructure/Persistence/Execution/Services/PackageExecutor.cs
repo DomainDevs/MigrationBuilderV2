@@ -87,8 +87,8 @@ public sealed class PackageExecutor
             {
                 LogEntry log = new()
                 {
-                    NombrePaso = Path.GetFileName(artifact),
-                    Inicio = DateTime.UtcNow
+                    Name = Path.GetFileName(artifact),
+                    Start = DateTime.UtcNow
                 };
                 try 
                 { 
@@ -100,17 +100,17 @@ public sealed class PackageExecutor
 
                     await _artifactExecutor.ExecuteAsync(artifact);
 
-                    log.Exito = true;
-                    log.Mensaje = "OK";
+                    log.Ok = true;
+                    log.Message = "OK";
                 }catch (Exception ex)
                 {
-                    log.Exito = false;
-                    log.Mensaje = ex.Message;
+                    log.Ok = false;
+                    log.Message = ex.Message;
 
                     throw;
                 }finally
                 {
-                    log.Fin = DateTime.UtcNow;
+                    log.End = DateTime.UtcNow;
                     logs.Add(log);
                     //writer.EscribirLog(Path.GetFileNameWithoutExtension(artifact),[log]);
                 }

@@ -36,20 +36,20 @@ public class LogWriterJSON
 
         var reporte = new
         {
-            NombreJob = nombreArchivo,
-            Generado = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"),
-            TotalPasos = entradas.Count,
-            Exitos = entradas.Count(e => e.Exito),
-            Fallidos = entradas.Count(e => !e.Exito),
+            Job = nombreArchivo,
+            CreatedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"),
+            StepCount = entradas.Count,
+            Success = entradas.Count(e => e.Ok),
+            Failed = entradas.Count(e => !e.Ok),
             //ExcelPath = excelPath, // Solo en la raíz
-            Pasos = entradas.ConvertAll(e => new
+            Steps = entradas.ConvertAll(e => new
             {
-                e.NombrePaso,
-                Inicio = e.Inicio.ToString("yyyy-MM-dd HH:mm:ss.fff"),
-                Fin = e.Fin.ToString("yyyy-MM-dd HH:mm:ss.fff"),
-                DuracionSegundos = (e.Fin - e.Inicio).TotalSeconds,
-                e.Exito,
-                e.Mensaje
+                e.Name,
+                Start = e.Start.ToString("yyyy-MM-dd HH:mm:ss.fff"),
+                End = e.End.ToString("yyyy-MM-dd HH:mm:ss.fff"),
+                Duration = (e.End - e.Start).TotalSeconds,
+                e.Ok,
+                e.Message
                 // 🔹 Aquí ya no ponemos FileXLS
             })
         };

@@ -14,3 +14,4 @@ Src/Infrastructure/Persistence/obj/
 Src/Web/Migration.Api/Logs/
 .vs/
 Src/Web/Migration.Api/bin/
+Build/Release/
