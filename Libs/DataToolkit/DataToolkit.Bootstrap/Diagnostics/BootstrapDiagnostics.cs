@@ -46,6 +46,7 @@ public static class BootstrapDiagnostics
         Console.WriteLine($" {root.Message}");
 
         Console.ForegroundColor = previous;
+        Console.ResetColor();
 
         Console.WriteLine(Separator);
 
