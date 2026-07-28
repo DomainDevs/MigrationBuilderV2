@@ -21,8 +21,8 @@ internal static class ArtifactDiscovery
             var x when x.StartsWith("DDL_", StringComparison.OrdinalIgnoreCase) => 2,
             var x when x.StartsWith("SQL_", StringComparison.OrdinalIgnoreCase) => 3,
             var x when x.StartsWith("LOAD_", StringComparison.OrdinalIgnoreCase) => 4,
-            var x when x.StartsWith("END_", StringComparison.OrdinalIgnoreCase) => 5,
-            var x when x.StartsWith("ETL_", StringComparison.OrdinalIgnoreCase) => 6,
+            var x when x.EndsWith(".dtsx", StringComparison.OrdinalIgnoreCase) => 5,
+            var x when x.StartsWith("END_", StringComparison.OrdinalIgnoreCase) => 6,
             _ => 99
         };
     }

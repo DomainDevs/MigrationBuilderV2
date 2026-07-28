@@ -20,12 +20,13 @@ public sealed class PackageExecutor
         _migrationPlanService = migrationPlanService;
     }
 
-    public async Task ExecuteAsync(
+    public async Task ExecuteAsyncPKG(
         string projectPath,
         string packagePath,
         MigrationPlan plan,
         MigrationPackage package,
-        PackageExecution execution)
+        PackageExecution execution,
+        List<LogEntry> logs)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
         ArgumentException.ThrowIfNullOrWhiteSpace(packagePath);
@@ -33,7 +34,7 @@ public sealed class PackageExecutor
         ArgumentNullException.ThrowIfNull(package);
         ArgumentNullException.ThrowIfNull(execution);
 
-        LogWriterJSON writer = new($"{projectPath}\\Logs\\"); //logPath
+        //LogWriterJSON writer = new($"{projectPath}\\Logs\\"); //logPath
 
         if (!Directory.Exists(packagePath))
         {
@@ -44,6 +45,32 @@ public sealed class PackageExecutor
         IReadOnlyList<string> artifacts =
             ArtifactDiscovery.Discover(packagePath);
 
+        //Si tiene ETL, retiro los demás artefactos y ejecuto solo el ETL
+        if (package.SelfContainedEtl)
+        {
+            artifacts = artifacts
+                .Where(a => a.EndsWith(".dtsx", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+        else
+        {
+            if (artifacts.Any(a => a.EndsWith(".dtsx", StringComparison.OrdinalIgnoreCase)))
+            {
+                artifacts = artifacts
+                    .Where(a =>
+                    {
+                        string fileName = Path.GetFileName(a);
+
+                        return fileName.StartsWith("BEGIN_", StringComparison.OrdinalIgnoreCase) ||
+                               fileName.StartsWith("DDL_", StringComparison.OrdinalIgnoreCase) ||
+                               fileName.StartsWith("END_", StringComparison.OrdinalIgnoreCase) ||
+                               a.EndsWith(".dtsx", StringComparison.OrdinalIgnoreCase);
+                    })
+                    .ToList();
+            }
+        }
+
+        //Valido si quedan artefactos para ejecutar, si no hay, lanzo excepción
         if (artifacts.Count == 0)
         {
             throw new InvalidOperationException(
@@ -55,10 +82,9 @@ public sealed class PackageExecutor
 
         try
         {
-            List<LogEntry> logs = [];
+            //List<LogEntry> logs = [];
             foreach (string artifact in artifacts)
             {
-
                 LogEntry log = new()
                 {
                     NombrePaso = Path.GetFileName(artifact),
@@ -86,12 +112,9 @@ public sealed class PackageExecutor
                 {
                     log.Fin = DateTime.UtcNow;
                     logs.Add(log);
-                    writer.EscribirLog(
-                    Path.GetFileNameWithoutExtension(artifact),
-                    [log]);
+                    //writer.EscribirLog(Path.GetFileNameWithoutExtension(artifact),[log]);
                 }
             }
-
 
             execution.Status = ExecutionStatus.Completed;
 

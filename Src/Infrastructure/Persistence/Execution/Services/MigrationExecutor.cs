@@ -1,8 +1,9 @@
 ﻿using Application.Abstractions.Execution;
 using Application.Features.Orchestrator.Commands;
 using Application.Features.Orchestrator.DTOs;
-using MediatR;
 using Microsoft.Extensions.Options;
+using Persistence.Execution.Helpers;
+using Persistence.Execution.Log;
 using Persistence.Execution.Models;
 using Persistence.Migration.Services;
 using Shared.Options;
@@ -30,12 +31,13 @@ public sealed class MigrationExecutor : IMigrationExecutor
         )
     {
         string projectPath = command.ProjectName;
+        LogWriterJSON writer = new($"{projectPath}\\Logs\\"); //logPath
+        List<LogEntry> logs = [];
 
         command.Packages.RemoveAll(x =>
         string.Equals(x, "string", StringComparison.OrdinalIgnoreCase));
 
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
-
 
         //ruta fisica
         projectPath =
@@ -82,9 +84,6 @@ public sealed class MigrationExecutor : IMigrationExecutor
                 if (!package.Enabled)
                     continue;
 
-                //if (!package.Approved)
-                //    continue;
-
                 string packagePath =
                     Path.Combine(
                         Path.Combine(projectPath, _options.Folders.MigrationTask),
@@ -98,16 +97,21 @@ public sealed class MigrationExecutor : IMigrationExecutor
                 execution.Packages.Add(packageExecution);
 
                 tasks.Add(
-                    _packageExecutor.ExecuteAsync(
+                    _packageExecutor.ExecuteAsyncPKG(
                         projectPath,
                         packagePath,
                         plan,
                         package,
-                        packageExecution));
+                        packageExecution,
+                        logs
+                        )
+                    );
             }
 
             await Task.WhenAll(tasks);
         }
+
+        writer.EscribirLog($"{projectPath}\\Logs\\", logs);
 
         return new MigrationExecuteResponse
         {

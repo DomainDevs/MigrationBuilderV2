@@ -2,21 +2,22 @@
 using DataToolkit.Library.Repositories;
 using System.Data;
 
-namespace DataToolkit.Library.UnitOfWorkLayer
+namespace DataToolkit.Library.UnitOfWorkLayer;
+
+public interface IUnitOfWork : IDisposable
 {
-    public interface IUnitOfWork
-    {
-        bool HasActiveTransaction { get; }
-        ISqlExecutor Sql { get; }
-        IDbTransaction? Transaction { get; }
+    Guid Id { get; }
 
-        IGenericRepository<T> Repository<T>()
-            where T : class;
+    bool HasActiveTransaction { get; }
+    ISqlExecutor Sql { get; }
+    IDbTransaction? Transaction { get; }
 
-        void BeginTransaction();
-        void Commit();
-        void Rollback();
-        void Dispose();
-        
-    }
+    IGenericRepository<T> Repository<T>()
+        where T : class;
+
+    void BeginTransaction();
+    void Commit();
+    void Rollback();
+    IUnitOfWork CreateNew();
+    
 }

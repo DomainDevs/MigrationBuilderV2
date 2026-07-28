@@ -20,11 +20,6 @@ public sealed class MigrationProjectInitializer : IMigrationProjectInitializer
         string root = _options.Folders.Root;
         string projectPath = Path.Combine(root, ProjectName);
 
-        //public string Root { get; init; } = string.Empty;
-        //public string Artifacts { get; init; } = string.Empty;
-        //public string Logs { get; init; } = string.Empty;
-        //public string Reports { get; init; } = string.Empty;
-
         string jsonPlan = "{\r\n  \"Version\": \"1.0\",\r\n  \"Packages\": [\r\n  ]\r\n}";
         string txtContent = "[.ShellClassInfo]\r\nIconResource=C:\\WINDOWS\\System32\\SHELL32.dll,264\r\n[ViewState]\r\nMode=\r\nVid=\r\nFolderType=Generic\r\n";
 

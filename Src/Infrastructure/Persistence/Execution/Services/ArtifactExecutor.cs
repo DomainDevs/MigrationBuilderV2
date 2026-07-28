@@ -40,27 +40,33 @@ public sealed class ArtifactExecutor
         ArgumentException.ThrowIfNullOrWhiteSpace(artifactPath);
 
         if (!File.Exists(artifactPath))
-        {
             throw new FileNotFoundException(
                 "No se encontró el artefacto.",
                 artifactPath);
-        }
 
-        //Para saber si es una ETL o un paquete
+        using var source = _source.CreateNew();
+        using var target = _target.CreateNew();
+
         string extension = Path.GetExtension(artifactPath);
+
         switch (extension.ToLowerInvariant())
         {
             case ".sql":
                 break;
 
             case ".dtsx":
-                    ConnectionConfig source =
+
+                ConnectionConfig sourceConfig =
                     _configuration.GetSection("SourceDB").Get<ConnectionConfig>()!;
 
-                    ConnectionConfig target =
+                ConnectionConfig targetConfig =
                     _configuration.GetSection("DestinationDB").Get<ConnectionConfig>()!;
 
-                    DTExecRunner.EjecutarPaqueteETL(artifactPath, source, target);
+                DTExecRunner.EjecutarPaqueteETL(
+                    artifactPath,
+                    sourceConfig,
+                    targetConfig);
+
                 return;
 
             default:
@@ -68,42 +74,49 @@ public sealed class ArtifactExecutor
                     $"El artefacto '{extension}' no es compatible.");
         }
 
-
         string sql = await File.ReadAllTextAsync(artifactPath);
 
         sql = RemoveComments(sql);
 
         if (string.IsNullOrWhiteSpace(sql))
-        {
             return;
-        }
 
         SqlScriptValidator.Validate(sql);
 
-        string fileName =
-            Path.GetFileNameWithoutExtension(artifactPath);
+        string fileName = Path.GetFileNameWithoutExtension(artifactPath);
 
         string[] parts = fileName.Split('_', 2);
 
         string artifactType = parts[0];
+
         string[] tableParts = parts[1].Split('.');
 
         string schema = tableParts[0];
-        string table = tableParts[1];
 
-        table = table
+        string table = tableParts[1]
             .Replace("WF_", "", StringComparison.OrdinalIgnoreCase)
             .Replace("STG_", "", StringComparison.OrdinalIgnoreCase);
 
         List<string> tables = [table];
 
-        await ValidateForeignKeysAsync(
-            schema,
-            table);
+        string sqlOrigin = $"""
+            SELECT COUNT(*)
+            FROM [{schema}].[{table}]
+            """;
 
-        if (artifactType.Equals(
-            "SQL",
-            StringComparison.OrdinalIgnoreCase))
+        long totalOrigin =
+            (await source.Sql.FromSqlAsync<long>(sqlOrigin))
+            .Single();
+
+        if (totalOrigin != 0)
+        {
+            await ValidateForeignKeysAsync(
+                target,
+                schema,
+                table);
+        }
+
+        if (artifactType.Equals("SQL", StringComparison.OrdinalIgnoreCase))
         {
             await ExecuteBulkTransferAsync(
                 sql,
@@ -113,17 +126,22 @@ public sealed class ArtifactExecutor
             return;
         }
 
-        //await _target.Sql.ExecuteAsync(sql);
+        await ExecuteSqlBatchesAsync(
+            target,
+            sql);
+    }
+
+    private static async Task ExecuteSqlBatchesAsync(
+        IUnitOfWork target,
+        string sql)
+    {
         foreach (string batch in SplitBatches(sql))
         {
             if (string.IsNullOrWhiteSpace(batch))
-            {
                 continue;
-            }
 
-            await _target.Sql.ExecuteAsync(batch);
+            await target.Sql.ExecuteAsync(batch);
         }
-
     }
 
     private async Task ExecuteBulkTransferAsync(
@@ -168,9 +186,7 @@ public sealed class ArtifactExecutor
 
         IList<TSqlParserToken> tokens =
             new TSql170Parser(false)
-                .GetTokenStream(
-                    new StringReader(sql),
-                    out errors);
+                .GetTokenStream(new StringReader(sql), out errors);
 
         StringBuilder builder = new();
 
@@ -200,9 +216,7 @@ public sealed class ArtifactExecutor
 
         while ((line = reader.ReadLine()) is not null)
         {
-            if (line.Trim().Equals(
-                    "GO",
-                    StringComparison.OrdinalIgnoreCase))
+            if (line.Trim().Equals("GO", StringComparison.OrdinalIgnoreCase))
             {
                 if (batch.Length > 0)
                 {
@@ -217,12 +231,11 @@ public sealed class ArtifactExecutor
         }
 
         if (batch.Length > 0)
-        {
             yield return batch.ToString();
-        }
     }
 
     private async Task ValidateForeignKeysAsync(
+        IUnitOfWork target,
         string schema,
         string table)
     {
@@ -235,19 +248,18 @@ public sealed class ArtifactExecutor
         TableMetadata metadata = tables.Single();
 
         IEnumerable<ColumnMetadata> foreignKeys =
-            metadata.Columns
-                .Where(x => !string.IsNullOrWhiteSpace(x.ForeignTable));
+            metadata.Columns.Where(x => !string.IsNullOrWhiteSpace(x.ForeignTable));
 
         foreach (ColumnMetadata foreignKey in foreignKeys)
         {
             string sql = $"""
-            SELECT COUNT(*)
-        FROM [{schema}].[{foreignKey.ForeignTable}]
-        """;
+                SELECT COUNT(*)
+                FROM [{schema}].[{foreignKey.ForeignTable}]
+                """;
 
-            long total = (await _target.Sql.FromSqlAsync<long>(sql))
+            long total =
+                (await target.Sql.FromSqlAsync<long>(sql))
                 .Single();
-
 
             if (total == 0)
             {
@@ -256,6 +268,4 @@ public sealed class ArtifactExecutor
             }
         }
     }
-
-
 }

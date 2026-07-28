@@ -3,7 +3,7 @@
 <Project>
   <PropertyGroup>
     <_PublishTargetUrl>D:\Devs\Empresa\MigrationBuilderV2Ready\Src\Web\Migration.Api\bin\Release\publish\</_PublishTargetUrl>
-    <History>True|2026-07-27T22:06:24.7398926Z||;True|2026-07-27T16:24:02.0386205-05:00||;True|2026-07-27T13:38:34.0791227-05:00||;True|2026-07-27T13:33:07.5367045-05:00||;</History>
+    <History>True|2026-07-28T13:59:37.9702299Z||;True|2026-07-28T08:58:31.5098191-05:00||;True|2026-07-28T08:53:48.4343937-05:00||;True|2026-07-27T17:06:24.7398926-05:00||;True|2026-07-27T16:24:02.0386205-05:00||;True|2026-07-27T13:38:34.0791227-05:00||;True|2026-07-27T13:33:07.5367045-05:00||;</History>
     <LastFailureDetails />
   </PropertyGroup>
 </Project>

@@ -21,9 +21,9 @@ public sealed class MetadataService
         string? schema = null,
         List<string>? tables = null)
     {
-        IUnitOfWork unitOfWork = isSource
-            ? _source
-            : _target;
+        using IUnitOfWork unitOfWork = isSource
+            ? _source.CreateNew()
+            : _target.CreateNew();
 
         var rows = await MetadataQueries.GetMetadataAsync(
             unitOfWork,

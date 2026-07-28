@@ -138,7 +138,8 @@ public sealed class GeneratePlanService : IGeneratePlanService
                                 Stage = index + 1,
                                 Package = packageName,
                                 Enabled = oldPackage.Enabled,
-                                Approved = oldPackage.Approved
+                                Approved = oldPackage.Approved,
+                                SelfContainedEtl = oldPackage.SelfContainedEtl
                             };
                         }
 
@@ -147,7 +148,8 @@ public sealed class GeneratePlanService : IGeneratePlanService
                             Stage = index + 1,
                             Package = packageName,
                             Enabled = true,
-                            Approved = false
+                            Approved = false,
+                            SelfContainedEtl = false
                         };
                     })
                     .ToList()
@@ -262,4 +264,5 @@ public sealed class MigrationPackage
     public string Package { get; set; } = string.Empty;
     public bool Enabled { get; set; } = true;
     public bool Approved { get; set; } = false;
+    public bool SelfContainedEtl { get; set; } = false;
 }

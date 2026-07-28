@@ -6,8 +6,14 @@ using System.Data;
 
 namespace DataToolkit.Library.UnitOfWorkLayer;
 
-public sealed class UnitOfWork : IUnitOfWork, IDisposable
+public sealed class UnitOfWork : IUnitOfWork
 {
+
+    /// <summary>
+    /// Gets the unique identifier of this UnitOfWork instance.
+    /// </summary>
+    public Guid Id { get; } = Guid.NewGuid();
+
     private readonly IDbConnectionFactory _factory;
     private readonly string _connection;
 
@@ -41,6 +47,28 @@ public sealed class UnitOfWork : IUnitOfWork, IDisposable
             GetConnection,
             GetTransaction
             );
+    }
+
+    /// <summary>
+    /// Creates a new independent UnitOfWork using the same connection configuration.
+    /// The returned instance does not share connection, transaction or repositories
+    /// with the current UnitOfWork.
+    /// </summary>
+    public IUnitOfWork CreateNew()
+    {
+        ThrowIfDisposed();
+
+        /*
+        if (HasActiveTransaction)
+        {
+            throw new InvalidOperationException(
+                "Cannot create a new UnitOfWork while a transaction is active.");
+        }
+        */
+
+        return new UnitOfWork(
+            _factory,
+            _connection);
     }
 
     // =========================================================
@@ -85,7 +113,8 @@ public sealed class UnitOfWork : IUnitOfWork, IDisposable
         var conn = GetConnection();
 
         if (_transaction != null)
-            throw new InvalidOperationException("Transaction already active.");
+            throw new InvalidOperationException(
+                "Transaction already active.");
 
         _transaction = conn.BeginTransaction();
         _repositories.Clear();
@@ -129,8 +158,9 @@ public sealed class UnitOfWork : IUnitOfWork, IDisposable
     {
         _transaction?.Dispose();
         _transaction = null;
-        // Cada transacción obtiene instancias nuevas de repositorios.
-        _repositories.Clear();
+
+        // Each transaction gets fresh repository instances.
+        _repositories.Clear(); // Cada transacción obtiene instancias nuevas de repositorios.
     }
 
     // =========================================================
