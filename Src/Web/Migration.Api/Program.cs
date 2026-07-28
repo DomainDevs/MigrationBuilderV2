@@ -38,7 +38,7 @@ try
     // Service Registration (Automatic)
     // ---------------------------------------------------------------------
     builder.Services.AddBootstrap(
-        false,
+        true,
         (typeof(Application.AssemblyReference).Assembly, "Application.Features", "Handlers"),
         (typeof(Persistence.AssemblyReference).Assembly, "Persistence", "Repositories"),
         (typeof(Persistence.AssemblyReference).Assembly, "Persistence", "Services")

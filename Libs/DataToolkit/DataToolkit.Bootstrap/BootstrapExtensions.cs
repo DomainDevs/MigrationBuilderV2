@@ -10,11 +10,35 @@ public static class BootstrapExtensions
     [Conditional("DEBUG")]
     public static void Dump(this IServiceCollection services)
     {
-        foreach (var group in services
-            .GroupBy(s => s.ServiceType.Assembly.GetName().Name)
-            .OrderByDescending(g => g.Count()))
+        ArgumentNullException.ThrowIfNull(services);
+        Dictionary<string, int> assemblies = new(StringComparer.Ordinal);
+
+        foreach (ServiceDescriptor service in services)
         {
-            Console.WriteLine($"{group.Key,-45} {group.Count()}");
+            string assembly = service.ServiceType.Assembly.GetName().Name ?? "<Unknown>";
+
+            if (assemblies.TryGetValue(assembly, out int count))
+            {
+                assemblies[assembly] = count + 1;
+            }
+            else
+            {
+                assemblies.Add(assembly, 1);
+            }
+        }
+
+        List<KeyValuePair<string, int>> ordered = new(assemblies);
+        ordered.Sort(static (x, y) =>
+        {
+            int compare = y.Value.CompareTo(x.Value);
+            return compare != 0
+                ? compare
+                : StringComparer.Ordinal.Compare(x.Key, y.Key);
+        });
+
+        foreach (var (assembly, count) in ordered)
+        {
+            Console.WriteLine($"{assembly,-45} {count}");
         }
     }
 
@@ -48,7 +72,6 @@ public static class BootstrapExtensions
             types,
             profiler,
             excluded);
-        //Console.WriteLine($"Bootstrap completed. Service collection: {services.Count} Services.");
 
         return services;
     }

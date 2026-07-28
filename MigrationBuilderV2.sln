@@ -46,6 +46,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataToolkit.Provider.SqlSer
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataToolkit.Provider.Sybase", "Libs\DataToolkit\DataToolkit.Provider.Sybase\DataToolkit.Provider.Sybase.csproj", "{D334F958-FE9B-F2B3-58A4-A754809FCA40}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataToolkit.Identity", "Libs\DataToolkit\DataToolkit.Identity\DataToolkit.Identity.csproj", "{31DB89DF-64A3-4DD6-8E8F-2FE412E865F1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -100,6 +102,10 @@ Global
 		{D334F958-FE9B-F2B3-58A4-A754809FCA40}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D334F958-FE9B-F2B3-58A4-A754809FCA40}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D334F958-FE9B-F2B3-58A4-A754809FCA40}.Release|Any CPU.Build.0 = Release|Any CPU
+		{31DB89DF-64A3-4DD6-8E8F-2FE412E865F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{31DB89DF-64A3-4DD6-8E8F-2FE412E865F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{31DB89DF-64A3-4DD6-8E8F-2FE412E865F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{31DB89DF-64A3-4DD6-8E8F-2FE412E865F1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -122,6 +128,7 @@ Global
 		{3051C92F-372B-482D-7E2A-2AB25440D6E2} = {FBC12D7A-AA19-4B1B-A773-6209C3833416}
 		{ECEA0855-0608-39FA-80BB-0E73E3E4C33C} = {FBC12D7A-AA19-4B1B-A773-6209C3833416}
 		{D334F958-FE9B-F2B3-58A4-A754809FCA40} = {FBC12D7A-AA19-4B1B-A773-6209C3833416}
+		{31DB89DF-64A3-4DD6-8E8F-2FE412E865F1} = {FBC12D7A-AA19-4B1B-A773-6209C3833416}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2EF6057B-555C-4238-BF33-999F6B0EA081}

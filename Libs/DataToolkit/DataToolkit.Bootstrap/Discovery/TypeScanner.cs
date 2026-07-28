@@ -23,7 +23,7 @@ internal static class TypeScanner
             string rootNamespacePrefix = module.RootNamespacePrefix;
             string targetNamespace = module.TargetNamespace;
 
-            int matches = 0;
+            int candidateCount = 0;
 
             profiler.Start(BootstrapPhase.AssemblyScan);
 
@@ -58,17 +58,19 @@ internal static class TypeScanner
                     continue;
                 }
 
+                Type[] interfaces = GetPublicInterfaces(type);
+
                 result.Add(new CandidateType(
                     type,
-                    GetPublicInterfaces(type),
+                    interfaces,
                     registration));
 
-                matches++;
+                candidateCount++;
             }
 
             profiler.Stop();
 
-            if (matches == 0)
+            if (candidateCount == 0)
             {
                 throw new BootstrapConfigurationException(
                     $"No se encontró ningún tipo público registrable en el módulo '{rootNamespace}' " +
