@@ -6,19 +6,19 @@
   },
   "SourceDB": {
     "Provider": "MSOLEDBSQL.1",
-    "Servidor": "localhost",
-    "BaseDatos": "PRUEBAS",
-    "Usuario": "sqluser",
-    "Password": "skf9nfi7",
+    "Servidor": "10.30.0.23",
+    "BaseDatos": "CARDINAL2G_MIGRACION",
+    "Usuario": "sa",
+    "Password": "T3chn0l0gy",
     "PersistSecurityInfo": true,
     "TimeOut": "90"
   },
   "DestinationDB": {
     "Provider": "MSOLEDBSQL.1",
-    "Servidor": "localhost",
-    "BaseDatos": "PruebasMigracion2",
+    "Servidor": "10.70.10.105",
+    "BaseDatos": "sisecore_mig_ar",
     "Usuario": "sqluser",
-    "Password": "skf9nfi7",
+    "Password": "Sistran2026+",
     "PersistSecurityInfo": true,
     "TimeOut": "90"
   },
