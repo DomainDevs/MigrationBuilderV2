@@ -10,9 +10,9 @@ public sealed class LogEntry
 
     public DateTime End { get; set; }
 
-    public string Message { get; set; } = string.Empty;
+    public string Msg { get; set; } = string.Empty;
 
-    public double Duration => (End - Start).TotalSeconds;
+    public double Elapsed => (End - Start).TotalSeconds;
 
     public string Status => Ok ? "Success" : "Failed";
 }

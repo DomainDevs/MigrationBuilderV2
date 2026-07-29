@@ -101,11 +101,11 @@ public sealed class PackageExecutor
                     await _artifactExecutor.ExecuteAsync(artifact);
 
                     log.Ok = true;
-                    log.Message = "OK";
+                    log.Msg = "OK";
                 }catch (Exception ex)
                 {
                     log.Ok = false;
-                    log.Message = ex.Message;
+                    log.Msg = ex.Message;
 
                     throw;
                 }finally

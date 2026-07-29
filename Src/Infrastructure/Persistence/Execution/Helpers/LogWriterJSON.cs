@@ -45,11 +45,11 @@ public class LogWriterJSON
             Steps = entradas.ConvertAll(e => new
             {
                 e.Name,
-                Start = e.Start.ToString("yyyy-MM-dd HH:mm:ss.fff"),
-                End = e.End.ToString("yyyy-MM-dd HH:mm:ss.fff"),
-                Duration = (e.End - e.Start).TotalSeconds,
+                Start = e.Start.ToString("HH:mm:ss.fff"),
+                End = e.End.ToString("HH:mm:ss.fff"),
+                Elapsed = (e.End - e.Start).TotalSeconds,
                 e.Ok,
-                e.Message
+                e.Msg
                 // 🔹 Aquí ya no ponemos FileXLS
             })
         };
@@ -59,8 +59,25 @@ public class LogWriterJSON
         string json = JsonSerializer.Serialize(reporte, jsonOptions);
         File.WriteAllText(archivo, json);
 
+        //Limpiar
+        DeleteOldFiles();
+
         Console.ForegroundColor = ConsoleColor.Cyan;
         Console.WriteLine($"\nReporte JSON generado: {archivo}");
         Console.ResetColor();
     }
+    private void DeleteOldFiles()
+    {
+        FileInfo[] files =
+            new DirectoryInfo(_carpetaBase)
+                .GetFiles("*.json")
+                .OrderByDescending(f => f.CreationTimeUtc)
+                .ToArray();
+
+        foreach (FileInfo file in files.Skip(10))
+        {
+            file.Delete();
+        }
+    }
+
 }
