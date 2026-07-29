@@ -113,8 +113,9 @@ public sealed class MigrationExecutor : IMigrationExecutor
                         logs
                         )
                     );
+                if (packageExecution.Status == ExecutionStatus.Failed)
+                    package.Approved = false;
             }
-
             await Task.WhenAll(tasks);
         }
 

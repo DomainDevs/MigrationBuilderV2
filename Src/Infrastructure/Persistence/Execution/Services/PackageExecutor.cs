@@ -36,11 +36,42 @@ public sealed class PackageExecutor
 
         //LogWriterJSON writer = new($"{projectPath}\\Logs\\"); //logPath
 
+        /*
         if (!Directory.Exists(packagePath))
         {
             throw new DirectoryNotFoundException(
                 $"No se encontró el paquete '{packagePath}'.");
         }
+        */
+
+        if (!Directory.Exists(packagePath))
+        {
+            execution.Status = ExecutionStatus.Completed;
+            execution.StartedAt = DateTime.UtcNow;
+            execution.FinishedAt = DateTime.UtcNow;
+            
+            execution.Status = ExecutionStatus.Failed;
+            execution.Error = $"No existe la carpeta del paquete '{packagePath}'. Se omite la ejecución.";
+
+            logs.Add(new LogEntry
+            {
+                Name = package.Package,
+                Start = execution.StartedAt.Value,
+                End = execution.FinishedAt.Value,
+                Ok = false,
+                Msg = $"No existe la carpeta del paquete '{packagePath}'. Se omite la ejecución."
+            });
+
+            plan.Revision = plan.Revision + 1;
+            int index = plan.Packages.FindIndex(x =>
+            x.Package.Equals(package.Package, StringComparison.OrdinalIgnoreCase));
+            plan.Packages[index].Approved = false;
+
+            _migrationPlanService.Save(projectPath, plan);
+
+            return;
+        }
+
 
         IReadOnlyList<string> artifacts =
             ArtifactDiscovery.Discover(packagePath);
