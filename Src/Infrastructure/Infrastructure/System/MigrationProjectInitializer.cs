@@ -27,17 +27,13 @@ public sealed class MigrationProjectInitializer : IMigrationProjectInitializer
 
         if (Directory.Exists(projectPath))
         {
-            //throw new DirectoryNotFoundException($"El proyecto '{projectPath}', ya existe!.");
             throw new IOException($"El proyecto '{projectPath}' ya existe.");
         }
-
+        
         provisioning
             .AddDirectory(root)
             .AddDirectory(Path.Combine(projectPath, _options.Folders.MigrationTask))
-            //.AddDirectory(@"D:\Migration\Tables\dbo.mpersona")
-            //.AddDirectory(@"D:\Migration\Tables\dbo.mpersona\DDL")
-            //.AddDirectory(@"D:\Migration\Tables\dbo.mpersona\EXTRACT")
-            //.AddDirectory(@"D:\Migration\Tables\dbo.mpersona\LOAD")
+            .AddDirectory(Path.Combine(projectPath, _options.Folders.Logs))
 
             .AddFile(
                 //@"D:\Migration\desktop.ini",
@@ -48,12 +44,6 @@ public sealed class MigrationProjectInitializer : IMigrationProjectInitializer
                 //@"D:\Migration\MigrationPlan.json",
                 Path.Combine(projectPath, "MigrationPlan.json"),
                 jsonPlan)
-
-            /*
-            .AddFile(
-                @"D:\Migration\Tables\dbo.mpersona\Artifact.json",
-                artifactJson)
-            */
 
             .SetAttributes(
                 root,
