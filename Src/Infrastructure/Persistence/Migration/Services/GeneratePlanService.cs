@@ -126,6 +126,7 @@ public sealed class GeneratePlanService : IGeneratePlanService
                 Version = "1.0",
                 Revision = (previousPlan?.Revision ?? 0) + 1,
                 GeneratedAt = DateTime.UtcNow,
+                Reprocess = false,
                 Packages = executionPlan
                     .Select((table, index) =>
                     {
@@ -255,6 +256,7 @@ public sealed class MigrationPlan
     public string Version { get; set; } = "1.0";
     public int Revision { get; set; }
     public DateTime GeneratedAt { get; set; }
+    public bool Reprocess { get; set; } = false;
     public List<MigrationPackage> Packages { get; set; } = [];
 }
 
