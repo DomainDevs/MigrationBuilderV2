@@ -89,7 +89,9 @@ public sealed class MetadataService
                 FK_DeleteAction = reader["FK_DeleteAction"]?.ToString(),
                 FK_UpdateAction = reader["FK_UpdateAction"]?.ToString(),
                 FK_IsDisabled = reader["FK_IsDisabled"]?.ToString() == "1",
-                FK_IsNotTrusted = reader["FK_IsNotTrusted"]?.ToString() == "1"
+                FK_IsNotTrusted = reader["FK_IsNotTrusted"]?.ToString() == "1",
+                RecordCount = reader["RecordCount"] is DBNull? 0 : Convert.ToInt64(reader["RecordCount"])
+
             });
         }
 

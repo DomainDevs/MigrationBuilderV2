@@ -21,4 +21,5 @@ public class ColumnMetadata
     public string? FK_UpdateAction { get; set; }
     public bool FK_IsDisabled { get; set; }
     public bool FK_IsNotTrusted { get; set; }
+    public long RecordCount { get; set; } = 0; //Int64
 }

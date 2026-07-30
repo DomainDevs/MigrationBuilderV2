@@ -14,180 +14,187 @@ internal sealed class SqlCompiler
 
     public string Compile(IEnumerable<SqlNode> nodes)
     {
-        var nodeList = nodes.ToList();
-        var sb = new StringBuilder();
+        ArgumentNullException.ThrowIfNull(nodes);
 
         Log("[BEGIN] SQL COMPILATION");
 
+        // 1. Clasificación en una sola pasada O(N)
+        SqlSelect? select = null;
+        SqlFrom? from = null;
+        SqlWhere? where = null;
+        SqlGroupBy? groupBy = null;
+        SqlOrderBy? orderBy = null;
+        SqlSkip? skip = null;
+        SqlTake? take = null;
+        List<SqlJoin>? joins = null;
+
+        foreach (var node in nodes)
+        {
+            switch (node)
+            {
+                case SqlSelect s: select ??= s; break;
+                case SqlFrom f: from ??= f; break;
+                case SqlWhere w: where ??= w; break;
+                case SqlGroupBy g: groupBy ??= g; break;
+                case SqlOrderBy o: orderBy ??= o; break;
+                case SqlSkip sk: skip ??= sk; break;
+                case SqlTake tk: take ??= tk; break;
+                case SqlJoin j:
+                    (joins ??= new List<SqlJoin>()).Add(j);
+                    break;
+            }
+        }
+
+        var sb = new StringBuilder(256);
+
         // ---------------- SELECT ----------------
-        var select = nodeList.OfType<SqlSelect>().FirstOrDefault();
-
-        var selectSql = select is null || select.Columns.Count == 0
-            ? "*"
-            : string.Join(", ", select.Columns);
-
-        Log($"[SELECT] {selectSql}");
-
-        sb.Append("SELECT ")
-          .Append(selectSql)
-          .AppendLine();
+        sb.Append("SELECT ");
+        if (select is null || select.Columns.Count == 0)
+        {
+            sb.Append('*');
+            Log("[SELECT] *");
+        }
+        else
+        {
+            sb.AppendJoin(", ", select.Columns);
+            Log(() => $"[SELECT] {string.Join(", ", select.Columns)}");
+        }
+        sb.AppendLine();
 
         // ---------------- FROM ----------------
-        var from = nodeList.OfType<SqlFrom>().FirstOrDefault();
+        if (from is null || from.Tables.Count == 0)
+            throw new InvalidOperationException("FROM clause is required.");
 
-        if (from is null)
-            throw new InvalidOperationException(
-                "FROM clause is required");
-
-        var fromSql = string.Join(", ", from.Tables);
-
-        Log($"[FROM] {fromSql}");
-
-        sb.Append("FROM ")
-          .Append(fromSql)
-          .AppendLine();
+        sb.Append("FROM ");
+        sb.AppendJoin(", ", from.Tables);
+        Log(() => $"[FROM] {string.Join(", ", from.Tables)}");
 
         // ---------------- JOIN ----------------
-        var joins = nodeList.OfType<SqlJoin>().ToList();
+        var joinCount = joins?.Count ?? 0;
+        Log(() => $"[JOIN] COUNT={joinCount}");
 
-        Log($"[JOIN] COUNT={joins.Count}");
-
-        foreach (var join in joins)
+        if (joins is not null)
         {
-            Log($"[JOIN] {join.Type} {join.Table} ON {join.On}");
+            foreach (var join in joins)
+            {
+                Log(() => $"[JOIN] {join.Type} {join.Table} ON {join.On}");
 
-            sb.Append(join.Type)
-              .Append(" ")
-              .Append(join.Table)
-              .Append(" ON ")
-              .Append(join.On)
-              .AppendLine();
+                sb.AppendLine()
+                  .Append(join.Type)
+                  .Append(' ')
+                  .Append(join.Table)
+                  .Append(" ON ")
+                  .Append(join.On);
+            }
         }
 
         // ---------------- WHERE ----------------
-        var where = nodeList.OfType<SqlWhere>().FirstOrDefault();
-
         if (where is not null)
         {
             Log("[WHERE] EXISTS");
 
-            sb.Append("WHERE ");
+            sb.AppendLine()
+              .Append("WHERE ");
 
             Render(sb, where.Expression);
-
-            sb.AppendLine();
         }
 
         // ---------------- GROUP BY ----------------
-        var groupBy = nodeList.OfType<SqlGroupBy>().FirstOrDefault();
-
-        if (groupBy is not null &&
-            groupBy.Columns.Count > 0)
+        if (groupBy is not null && groupBy.Columns.Count > 0)
         {
-            var gb = string.Join(", ", groupBy.Columns);
+            Log(() => $"[GROUP BY] {string.Join(", ", groupBy.Columns)}");
 
-            Log($"[GROUP BY] {gb}");
-
-            sb.Append("GROUP BY ")
-              .Append(gb)
-              .AppendLine();
+            sb.AppendLine()
+              .Append("GROUP BY ");
+            sb.AppendJoin(", ", groupBy.Columns);
         }
 
         // ---------------- ORDER BY ----------------
-        var orderBy = nodeList.OfType<SqlOrderBy>().FirstOrDefault();
-
-        if (orderBy is not null &&
-            orderBy.Columns.Count > 0)
+        if (orderBy is not null && orderBy.Columns.Count > 0)
         {
-            var ob = string.Join(", ", orderBy.Columns);
+            Log(() => $"[ORDER BY] {string.Join(", ", orderBy.Columns)}");
 
-            Log($"[ORDER BY] {ob}");
-
-            sb.Append("ORDER BY ")
-              .Append(ob);
+            sb.AppendLine()
+              .Append("ORDER BY ");
+            sb.AppendJoin(", ", orderBy.Columns);
         }
 
         // ---------------- PAGING ----------------
-        var skip = nodeList
-            .OfType<SqlSkip>()
-            .FirstOrDefault();
-
-        var take = nodeList
-            .OfType<SqlTake>()
-            .FirstOrDefault();
-
-        if ((skip is not null || take is not null)
-            && orderBy is null)
+        if ((skip is not null || take is not null) && orderBy is null)
         {
-            throw new InvalidOperationException(
-                "Skip() and Take() require OrderBy().");
+            throw new InvalidOperationException("Skip() and Take() require OrderBy().");
         }
 
         if (skip is not null)
         {
-            Log($"[SKIP] {skip.Value}");
+            Log(() => $"[SKIP] {skip.Value}");
 
             sb.AppendLine()
-              .Append($"OFFSET {skip.Value} ROWS");
+              .Append("OFFSET ")
+              .Append(skip.Value)
+              .Append(" ROWS");
         }
 
         if (take is not null)
         {
-            Log($"[TAKE] {take.Value}");
+            Log(() => $"[TAKE] {take.Value}");
 
             sb.AppendLine()
-              .Append($"FETCH NEXT {take.Value} ROWS ONLY");
+              .Append("FETCH NEXT ")
+              .Append(take.Value)
+              .Append(" ROWS ONLY");
         }
 
-        var sql = sb.ToString().Trim();
+        var sql = sb.ToString();
 
         Log("[END] SQL COMPILATION");
-        Log($"[SQL] {sql}");
+        Log(() => $"[SQL] {sql}");
 
         return sql;
     }
 
-    private void Render(
-        StringBuilder sb,
-        SqlNode node)
+    private void Render(StringBuilder sb, SqlNode node)
     {
         switch (node)
         {
             case SqlRaw r:
-
-                Log($"[RAW] {r.Text}");
-
+                Log(() => $"[RAW] {r.Text}");
                 sb.Append(r.Text);
                 break;
 
+            case SqlParameter p:
+                Log(() => $"[PARAMETER] {p.Name} = {p.Value ?? "NULL"}");
+                sb.Append(p.Name);
+                break;
+
             case SqlBinary b:
+                Log(() => $"[BINARY] {b.Op}");
 
-                Log($"[BINARY] {b.Op}");
-
-                sb.Append("(");
-
+                sb.Append('(');
                 Render(sb, b.Left);
-
-                sb.Append(" ")
+                sb.Append(' ')
                   .Append(b.Op)
-                  .Append(" ");
-
+                  .Append(' ');
                 Render(sb, b.Right);
-
-                sb.Append(")");
-
+                sb.Append(')');
                 break;
 
             case SqlWhere w:
-
                 Render(sb, w.Expression);
-
                 break;
         }
     }
 
+    // Métodos de logging limpios
     private void Log(string message)
     {
-        _trace?.Add(message);
+        if (_trace?.Enabled == true)
+            _trace.Add(message);
+    }
+
+    private void Log(Func<string> messageFactory)
+    {
+        if (_trace?.Enabled == true)
+            _trace.Add(messageFactory());
     }
 }

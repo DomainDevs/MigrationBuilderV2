@@ -19,44 +19,60 @@ public sealed class DependencyResolverService
         string? schema,
         List<string>? tables)
     {
-        HashSet<string> result =
-            new(
-                tables ?? [],
-                StringComparer.OrdinalIgnoreCase);
-
-        bool hasChanges;
-
-        do
+        // 1. Caso base: Si no se enviaron tablas específicas, no hay nada que resolver
+        if (tables is null || tables.Count == 0)
         {
-            hasChanges = false;
+            return [];
+        }
 
-            List<TableMetadata> metadata =
-                await _metadataService.ExtractMetadataAsync(
-                    false,
-                    //source,
-                    schema,
-                    result.ToList());
+        // 2. Traer la metadata completa del esquema en UNA SOLA llamada I/O (en lugar de N llamadas en bucle)
+        List<TableMetadata> allMetadata = await _metadataService.ExtractMetadataAsync(
+            false,
+            //source,
+            schema,
+            tables: null); // Trae el mapa completo del esquema
 
-            foreach (TableMetadata table in metadata)
+        // Indexar por nombre de tabla para búsquedas O(1)
+        var metadataLookup = allMetadata.ToDictionary(
+            t => t.Name,
+            StringComparer.OrdinalIgnoreCase);
+
+        var resolvedTables = new HashSet<string>(tables, StringComparer.OrdinalIgnoreCase);
+        var processingQueue = new Queue<string>(tables);
+
+        // 3. Recorrido del grafo en memoria mediante BFS (Breadth-First Search)
+        while (processingQueue.Count > 0)
+        {
+            string currentTableName = processingQueue.Dequeue();
+
+            if (!metadataLookup.TryGetValue(currentTableName, out var tableMetadata))
             {
-                foreach (ColumnMetadata column in table.Columns)
-                {
-                    if (string.IsNullOrWhiteSpace(column.ForeignTable))
-                    {
-                        continue;
-                    }
-
-                    if (result.Add(column.ForeignTable))
-                    {
-                        hasChanges = true;
-                    }
-                }
+                continue;
             }
 
-        } while (hasChanges);
+            foreach (ColumnMetadata column in tableMetadata.Columns)
+            {
+                if (string.IsNullOrWhiteSpace(column.ForeignTable))
+                {
+                    continue;
+                }
 
-        return result
-            .OrderBy(x => x)
+                // Evitar self-references en la cola de exploración
+                if (string.Equals(currentTableName, column.ForeignTable, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                // Si la tabla foránea es nueva, la registramos y la ponemos en cola para explorar sus propias FKs
+                if (resolvedTables.Add(column.ForeignTable))
+                {
+                    processingQueue.Enqueue(column.ForeignTable);
+                }
+            }
+        }
+
+        return resolvedTables
+            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 }

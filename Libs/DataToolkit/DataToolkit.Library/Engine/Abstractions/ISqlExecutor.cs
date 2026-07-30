@@ -15,7 +15,13 @@ namespace DataToolkit.Library.Engine.Abstractions
         Task<int> ExecuteAsync(string sql, object? parameters);
         (int RowsAffected, Dictionary<string, object> OutputValues) ExecuteWithOutput(string storedProcedure, Action<DynamicParameters> configureParameters);
         (int RowsAffected, Dictionary<string, object> OutputValues) ExecuteWithOutput(string storedProcedure, Action<DynamicParameters> configureParameters, int? commandTimeout = null);
-        Task<(int RowsAffected, DynamicParameters Output)> ExecuteWithOutputAsync(string storedProcedure, Action<DynamicParameters> configureParameters, int? commandTimeout = null);
+
+        // Cambias el retorno de DynamicParameters a Dictionary<string, object>
+        Task<(int RowsAffected, Dictionary<string, object> OutputValues)> ExecuteWithOutputAsync(
+            string storedProcedure,
+            Action<DynamicParameters> configureParameters,
+            int? commandTimeout = null);
+
         IEnumerable<T> FromSql<T>(string sql);
         IEnumerable<T> FromSql<T>(string sql, object? parameters = null, int? commandTimeout = null);
         IEnumerable<T> FromSql<T>(string sql, object? parameters);

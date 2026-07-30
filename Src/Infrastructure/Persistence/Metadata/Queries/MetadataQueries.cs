@@ -86,7 +86,9 @@ SELECT
 
     fkref.is_disabled AS FK_IsDisabled,
 
-    fkref.is_not_trusted AS FK_IsNotTrusted
+    fkref.is_not_trusted AS FK_IsNotTrusted,
+    
+    ISNULL(ps.RecordCount, 0) AS RecordCount
 
 FROM sys.schemas s
 
@@ -130,12 +132,22 @@ LEFT JOIN sys.columns rc
 
 LEFT JOIN sys.foreign_keys fkref
     ON fk.constraint_object_id = fkref.object_id
-
+LEFT JOIN
+(
+    SELECT
+    object_id,
+    SUM(row_count) AS RecordCount
+    FROM sys.dm_db_partition_stats
+    WHERE index_id IN (0, 1)
+    GROUP BY object_id
+) AS ps
+    ON ps.object_id = t.object_id
 {whereClause}
 
 ORDER BY
+    ISNULL(ps.RecordCount, 0),
     s.name,
-    t.name,
+    t.object_id,
     c.column_id;";
 
         return unitOfWork.Sql.FromSqlDictionaryAsync(
