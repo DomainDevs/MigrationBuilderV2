@@ -91,12 +91,6 @@ public sealed class MigrationExecutor : IMigrationExecutor
                 if (!package.Enabled)
                     continue;
 
-                if (plan.Reprocess==false)
-                {
-                    if (!package.Approved)
-                        continue;
-                }
-
                 string packagePath =
                     Path.Combine(
                         Path.Combine(projectPath, _options.Folders.MigrationTask),

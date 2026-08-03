@@ -2,11 +2,11 @@ using App.Configurations;
 using Application;
 using DataToolkit.Bootstrap.Diagnostics;
 using Infrastructure;
-using Infrastructure.Common.Diagnostics;
 using Infrastructure.Documentation;
 using Persistence;
 using Serilog;
 using Shared.Options;
+using System.Security.Claims;
 
 try
 {
@@ -40,10 +40,41 @@ try
     builder.Services.AddBootstrap(
         false,
         (typeof(Application.AssemblyReference).Assembly, "Application.Features", "Handlers"),
+        (typeof(Application.AssemblyReference).Assembly, "Application.Features", "Services"),
         (typeof(Persistence.AssemblyReference).Assembly, "Persistence", "Repositories"),
         (typeof(Persistence.AssemblyReference).Assembly, "Persistence", "Services")
     );
-    
+
+    // 1. Registras el servicio indicando cómo leer tu entidad de usuario
+    /*
+    builder.Services.AddDataToolkitAuthentication<ApplicationUser>(builder.Configuration["Jwt:Secret"]!)
+        .MapUser(user =>
+        {
+            user.UserId = u => u.Id;
+            user.Claims = u => new[] {
+            new Claim(
+                ClaimTypes.Role,u.Role)
+            };
+        })
+        .UseUserResolver<UserService>()
+        .AddJwt(jwt =>
+        {
+            jwt.Issuer =
+                builder.Configuration["Jwt:Issuer"]!;
+
+            jwt.Audience =
+                builder.Configuration["Jwt:Audience"]!;
+
+            jwt.AccessTokenLifetimeMinutes =
+                int.Parse(
+                    builder.Configuration["Jwt:AccessTokenLifetimeMinutes"]!);
+
+            jwt.RefreshTokenLifetimeHours =
+                int.Parse(
+                    builder.Configuration["Jwt:RefreshTokenLifetimeHours"]!);
+        });
+    */
+
 
     builder.Services.AddControllers();
 

@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\Libs\DataToolkit\DataToolkit.Authentication\DataToolkit.Authentication.csproj" />
     <ProjectReference Include="..\..\..\Libs\DataToolkit\DataToolkit.Bootstrap\DataToolkit.Bootstrap.csproj" />
     <ProjectReference Include="..\..\Core\Application\Application.csproj" />
     <ProjectReference Include="..\..\Infrastructure\Infrastructure\Infrastructure.csproj" />
