@@ -1,8 +1,8 @@
-﻿using Infrastructure.System.Provisioning;
+﻿using Infrastructure.ProjectSystem.Provisioning;
 using Microsoft.Extensions.Options;
 using Shared.Options;
 
-namespace Infrastructure.System;
+namespace Infrastructure.ProjectSystem;
 
 public sealed class MigrationProjectInitializer : IMigrationProjectInitializer
 {

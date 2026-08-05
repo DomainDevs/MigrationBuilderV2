@@ -1,5 +1,5 @@
 ﻿
-namespace Infrastructure.System.Provisioning;
+namespace Infrastructure.ProjectSystem.Provisioning;
 
 internal sealed class ProvisioningOperation
 {

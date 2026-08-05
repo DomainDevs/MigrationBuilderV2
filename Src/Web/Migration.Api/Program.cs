@@ -89,10 +89,10 @@ try
     app.UseInfrastructure(builder.Configuration);
 
     // Swagger
-    if (builder.Configuration.GetValue<bool>("SwaggerSettings:Enabled")) 
-    {
-        app.UseOpenApiDocumentation(builder.Configuration);
-    }
+    //if (builder.Configuration.GetValue<bool>("SwaggerSettings:Enabled"))
+    //{
+    //   app.UseOpenApiDocumentation(builder.Configuration);
+    //}
     await app.UsePersistenceAsync();
 
     // ---------------------------------------------------------------------

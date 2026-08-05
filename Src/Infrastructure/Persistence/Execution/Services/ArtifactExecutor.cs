@@ -99,21 +99,39 @@ public sealed class ArtifactExecutor
 
         List<string> tables = [table];
 
-        string sqlOrigin = $"""
-            SELECT COUNT(*)
-            FROM [{schema}].[{table}]
-            """;
+        bool isLocal =
+            artifactType.Equals("LOCAL", StringComparison.OrdinalIgnoreCase);
 
-        long totalOrigin =
-            (await source.Sql.FromSqlAsync<long>(sqlOrigin))
-            .Single();
-
-        if (totalOrigin != 0)
+        if (isLocal)
         {
             await ValidateForeignKeysAsync(
                 target,
                 schema,
                 table);
+        }
+        else
+        {
+            if(!artifactType.Equals("BEGIN", StringComparison.OrdinalIgnoreCase) && !artifactType.Equals("END", StringComparison.OrdinalIgnoreCase))
+            {
+                string sqlOrigin = $"""
+                SELECT COUNT(*)
+                FROM [{schema}].[{table}]
+                """;
+
+                long totalOrigin =
+                    (await source.Sql.FromSqlAsync<long>(sqlOrigin))
+                    .Single();
+
+                if (totalOrigin != 0)
+                {
+                    await ValidateForeignKeysAsync(
+                        target,
+                        schema,
+                        table);
+                }
+            }
+
+
         }
 
         if (artifactType.Equals("SQL", StringComparison.OrdinalIgnoreCase))

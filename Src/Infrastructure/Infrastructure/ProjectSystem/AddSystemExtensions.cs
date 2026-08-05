@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 
-namespace Infrastructure.System;
+namespace Infrastructure.ProjectSystem;
 
 internal static class AddSystemExtensions
 {

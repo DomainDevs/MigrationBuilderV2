@@ -22,7 +22,7 @@ public class PackageExecutionController : ControllerBase
         _mediator = mediator;
     }
 
-    
+    /*
     // =====================================
     // GET: api/PackageExecution
     // =====================================
@@ -111,5 +111,6 @@ public class PackageExecutionController : ControllerBase
         }
         return Ok(ApiResponse.Success<object>(null, "Registro eliminado correctamente"));
     }
+    */
     
 }

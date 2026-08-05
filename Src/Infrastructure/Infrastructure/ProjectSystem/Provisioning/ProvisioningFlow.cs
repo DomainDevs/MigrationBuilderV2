@@ -1,4 +1,4 @@
-﻿namespace Infrastructure.System.Provisioning;
+﻿namespace Infrastructure.ProjectSystem.Provisioning;
 
 /// <summary>
 /// Defines a provisioning flow that builds and executes

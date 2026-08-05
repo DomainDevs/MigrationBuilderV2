@@ -99,6 +99,22 @@ public sealed class PackageExecutor
                     })
                     .ToList();
             }
+            if (!artifacts.Any(a => Path.GetFileName(a).StartsWith("SQL_", StringComparison.OrdinalIgnoreCase)) &&
+                artifacts.Any(a => Path.GetFileName(a).StartsWith("LOCAL_", StringComparison.OrdinalIgnoreCase)))
+            {
+                List<string> ordered = [];
+
+                ordered.AddRange(artifacts.Where(a =>
+                    Path.GetFileName(a).StartsWith("BEGIN_", StringComparison.OrdinalIgnoreCase)));
+
+                ordered.AddRange(artifacts.Where(a =>
+                    Path.GetFileName(a).StartsWith("LOCAL_", StringComparison.OrdinalIgnoreCase)));
+
+                ordered.AddRange(artifacts.Where(a =>
+                    Path.GetFileName(a).StartsWith("END_", StringComparison.OrdinalIgnoreCase)));
+
+                artifacts = ordered;
+            }
         }
 
         //Valido si quedan artefactos para ejecutar, si no hay, lanzo excepción

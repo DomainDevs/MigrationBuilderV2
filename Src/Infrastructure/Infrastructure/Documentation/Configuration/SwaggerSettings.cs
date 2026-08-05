@@ -1,6 +1,6 @@
-﻿namespace Infrastructure.Documentation;
+namespace Infrastructure.Documentation.Configuration;
 
-public class SwaggerSettings
+public sealed class SwaggerSettings
 {
     public bool Enable { get; set; }
     public string? Title { get; set; }

@@ -16,7 +16,7 @@
   "DestinationDB": {
     "Provider": "MSOLEDBSQL.1",
     "Servidor": "10.70.10.105",
-    "BaseDatos": "sisecore_mig_ar",
+    "BaseDatos": "sisecore_mig_test",
     "Usuario": "sqluser",
     "Password": "Sistran2026+",
     "PersistSecurityInfo": true,

@@ -1,10 +1,12 @@
 ﻿using Infrastructure.Cors;
-using Infrastructure.Documentation;
+using Infrastructure.Documentation.Extensions;
 using Infrastructure.ErrorHandling;
-using Infrastructure.System;
+using Infrastructure.ProjectSystem;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 
 namespace Infrastructure;
@@ -28,8 +30,18 @@ public static class InfrastructureServiceCollectionExtensions
         return services;
     }
 
-    public static IApplicationBuilder UseInfrastructure(this IApplicationBuilder builder, IConfiguration config, bool isDev = false)
+    public static IApplicationBuilder UseInfrastructure(
+        this IApplicationBuilder builder, IConfiguration config)
     {
+
+        IWebHostEnvironment environment =
+            builder.ApplicationServices.GetRequiredService<IWebHostEnvironment>();
+
+        if (config.GetValue<bool>("SwaggerSettings:Enabled"))
+        {
+            builder.UseOpenApiDocumentation();
+        }
+
         // Ejecutamos la cadena base
         builder
             .UseHttpsRedirection()

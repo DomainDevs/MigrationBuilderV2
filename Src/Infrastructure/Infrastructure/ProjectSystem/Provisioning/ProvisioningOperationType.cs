@@ -1,4 +1,4 @@
-﻿namespace Infrastructure.System.Provisioning;
+﻿namespace Infrastructure.ProjectSystem.Provisioning;
 
 public enum ProvisioningOperationType
 {

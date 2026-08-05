@@ -1,4 +1,4 @@
-﻿namespace Infrastructure.System;
+﻿namespace Infrastructure.ProjectSystem;
 
 public static class DiskHelper
 {
