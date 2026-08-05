@@ -62,7 +62,7 @@ internal static class BeginEndBuilder
             sql.AppendLine("-- Limpiar tabla de destino");
             sql.AppendLine($"WHILE 1 = 1");
             sql.AppendLine($"BEGIN ");
-            sql.AppendLine($"   DELETE TOP(5000) ");
+            sql.AppendLine($"   DELETE TOP(6000) ");
             sql.AppendLine($"   FROM [{schema}].[{tableName}]; ");
             sql.AppendLine($"   IF @@ROWCOUNT = 0 ");
             sql.AppendLine($"   BREAK; ");
