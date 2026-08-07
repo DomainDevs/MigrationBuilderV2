@@ -1,4 +1,6 @@
-﻿namespace Shared.Options;
+﻿using System;
+
+namespace Shared.Options;
 
 public sealed class MigrationOptions
 {
@@ -7,4 +9,6 @@ public sealed class MigrationOptions
     public string JobName { get; init; } = string.Empty;
 
     public FolderOptions Folders { get; init; } = new();
+
+    public ExecutionOptions Execution { get; init; } = new();
 }

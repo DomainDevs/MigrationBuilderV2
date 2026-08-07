@@ -45,24 +45,97 @@ Revise el archivo SQL y vuelva a ejecutar la migración.
 """);
     }
 
-    private static void ValidateDoubleQuotedStrings(
-        string script)
+    private static void ValidateDoubleQuotedStrings(string script)
     {
-        var matches = Regex.Matches(
-            script,
-            "\"[^\"]+\"");
+        bool inString = false;
+        bool inLineComment = false;
+        bool inBlockComment = false;
 
-        if (matches.Count == 0)
-            return;
+        for (int i = 0; i < script.Length; i++)
+        {
+            char c = script[i];
+            char next = i + 1 < script.Length
+                ? script[i + 1]
+                : '\0';
 
-        Match match = matches[0];
+            // -----------------------------------------
+            // Comentario de línea
+            // -----------------------------------------
+            if (!inString && !inBlockComment)
+            {
+                if (!inLineComment && c == '-' && next == '-')
+                {
+                    inLineComment = true;
+                    i++;
+                    continue;
+                }
 
-        throw new InvalidOperationException(
-$"""
+                if (inLineComment)
+                {
+                    if (c == '\r' || c == '\n')
+                        inLineComment = false;
+
+                    continue;
+                }
+            }
+
+            // -----------------------------------------
+            // Comentario de bloque
+            // -----------------------------------------
+            if (!inString && !inLineComment)
+            {
+                if (!inBlockComment && c == '/' && next == '*')
+                {
+                    inBlockComment = true;
+                    i++;
+                    continue;
+                }
+
+                if (inBlockComment)
+                {
+                    if (c == '*' && next == '/')
+                    {
+                        inBlockComment = false;
+                        i++;
+                    }
+
+                    continue;
+                }
+            }
+
+            // -----------------------------------------
+            // Literales de texto
+            // -----------------------------------------
+            if (!inLineComment && !inBlockComment)
+            {
+                if (c == '\'')
+                {
+                    // Manejar '' (comilla escapada)
+                    if (inString && next == '\'')
+                    {
+                        i++;
+                        continue;
+                    }
+
+                    inString = !inString;
+                    continue;
+                }
+
+                // Solo detectar " fuera de cadenas y comentarios
+                if (!inString && c == '"')
+                {
+                    int end = script.IndexOf('"', i + 1);
+
+                    string value = end > i
+                        ? script.Substring(i, end - i + 1)
+                        : "\"";
+
+                    throw new InvalidOperationException(
+    $"""
 Se detectó un posible literal de texto entre comillas dobles.
 
 Valor encontrado:
-    {match.Value}
+    {value}
 
 SQL Server utiliza comillas simples para representar
 literales de texto.
@@ -75,5 +148,9 @@ Correcto:
 
 Revise el archivo SQL y vuelva a ejecutar la migración.
 """);
+                }
+            }
+        }
     }
+
 }

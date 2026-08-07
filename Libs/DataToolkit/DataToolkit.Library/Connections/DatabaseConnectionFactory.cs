@@ -67,7 +67,7 @@ public sealed class DatabaseConnectionFactory : IDbConnectionFactory
     private IDatabaseProvider ResolveProvider(string alias)
     {
         var providerName =
-            _configuration.GetValue<string>($"DatabaseProviders:{alias}");
+            _configuration.GetValue<string>($"Connections:{alias}:Provider");
 
         if (string.IsNullOrWhiteSpace(providerName))
         {

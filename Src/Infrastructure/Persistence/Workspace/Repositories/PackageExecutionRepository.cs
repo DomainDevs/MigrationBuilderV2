@@ -1,18 +1,24 @@
-﻿using DataToolkit.Library.Repositories;
+﻿using Application.Abstractions.Persistence.Workspace;
+using DataToolkit.Library.Connections.Context;
+using DataToolkit.Library.Repositories;
+using Domain.Entities.Workspace;
 using Persistence.Connect.Context;
 using System.Linq.Expressions;
-using Domain.Entities.Workspace;
-using Application.Abstractions.Persistence.Workspace;
 
 namespace Persistence.Workspace.Repositories;
 
 public sealed class PackageExecutionRepository : IPackageExecutionRepository
 {
     private readonly IGenericRepository<PackageExecution> _repository;
+    private readonly IDatabaseContext _database;
 
-    public PackageExecutionRepository(SqliteContext context)
+    public PackageExecutionRepository(
+        IDatabaseContext database //SqliteContext context
+        )
     {
-        _repository = context.Workspace.Repository<PackageExecution>();
+        _database = database;
+        _repository = _database["Workspace"].Repository<PackageExecution>();
+        //_repository = context.Workspace.Repository<PackageExecution>();
     }
 
     public Task<int> InsertAsync(PackageExecution entity)

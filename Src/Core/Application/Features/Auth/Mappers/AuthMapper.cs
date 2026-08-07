@@ -1,12 +1,16 @@
 using Application.Features.Auth.Commands;
 using Domain.DTOs.Auth;
-using Riok.Mapperly.Abstractions;
-//using WebApi.Contracts.Auth;
 
 namespace Application.Features.Auth.Mappers;
-
-[Mapper]
-public static partial class AuthMapper
+public static class ApplicationUserMapper
 {
-    public static partial LoginCommand ToCommand(this AuthenticateRequest request);
+    public static ApplicationUser ToApplicationUser(
+        this LoginCommand command)
+    {
+        return new ApplicationUser
+        {
+            UserName = command.UserName,
+            PasswordHash = command.Password
+        };
+    }
 }

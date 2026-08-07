@@ -2,6 +2,7 @@
 using Application.Features.Migration.Commands;
 using Application.Features.Migration.DTOs;
 using DataToolkit.Library;
+using DataToolkit.Library.Connections.Context;
 using DataToolkit.Library.UnitOfWorkLayer;
 using Microsoft.Extensions.Options;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
@@ -17,7 +18,8 @@ namespace Persistence.Migration.Services;
 
 public sealed class GeneratePlanService : IGeneratePlanService
 {
-    private readonly IUnitOfWork _target;
+    //private readonly IUnitOfWork _target;
+    private readonly IDatabaseContext _database;
     private readonly MigrationOptions _options;
     private readonly MetadataService _metadataService;
     private readonly DependencyResolverService _dependencyResolver;
@@ -31,7 +33,7 @@ public sealed class GeneratePlanService : IGeneratePlanService
         Log.ForContext<GeneratePlanService>();
 
     public GeneratePlanService(
-        SqlServerContext context,
+        IDatabaseContext database, //SqlServerContext context,
         MetadataService metadataService,
         DependencyResolverService dependencyResolver,
         MigrationPlanningService migrationPlanningService,
@@ -42,7 +44,8 @@ public sealed class GeneratePlanService : IGeneratePlanService
         IGenerateLoadService generateLoadService
         )
     {
-        _target = context.Target;
+        _database = database; //_target = context.Target;
+
         _options = options.Value;
         _metadataService = metadataService;
         _dependencyResolver = dependencyResolver;
@@ -91,7 +94,7 @@ public sealed class GeneratePlanService : IGeneratePlanService
 
             IReadOnlyList<string> executionPlan =
                 await _migrationPlanningService.BuildExecutionPlanStringAsyncStr(
-                    _target,
+                    _database["Target"].CreateNew(), //_target,
                     command.Schema,
                     allTables);
 

@@ -97,6 +97,34 @@ public sealed class SqliteDatabaseInitializer
         CREATE INDEX IF NOT EXISTS IX_PackageExecutionStep_Status
             ON PackageExecutionStep (Status);
 
+        CREATE TABLE IF NOT EXISTS tuser (
+            id_user         INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_name       TEXT NOT NULL UNIQUE,
+            password_hash   TEXT NOT NULL,
+            enabled         INTEGER NOT NULL DEFAULT 1,
+            created_at      TEXT NOT NULL,
+            updated_at      TEXT NULL
+        );
+
+        INSERT INTO tuser
+        (
+            user_name,
+            password_hash,
+            enabled,
+            created_at
+        )
+        SELECT
+            'admin',
+            'admin',
+            1,
+            datetime('now')
+        WHERE NOT EXISTS
+        (
+            SELECT 1
+            FROM tuser
+            WHERE user_name = 'admin'
+        );
+
         """;
     }
 }

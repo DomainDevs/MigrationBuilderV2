@@ -1,30 +1,41 @@
 {
-  "DatabaseProviders": {
-    "Source": "SqlServer",
-    "Target": "SqlServer",
-    "Workspace": "Sqlite"
+  "Connections": {
+    "Source": {
+      "Provider": "SqlServer",
+      "Driver": "MSOLEDBSQL.1",
+      "Server": "10.30.0.23",
+      "Database": "CARDINAL2G_MIGRACION",
+      "User": "sa",
+      "Password": "T3chn0l0gy",
+      "PersistSecurityInfo": true,
+      "TimeOut": 900
+    },
+    "Target": {
+      "Provider": "SqlServer",
+      "Driver": "MSOLEDBSQL.1",
+      "Server": "10.70.10.105",
+      "Database": "sisecore_mig_test",
+      "User": "sqluser",
+      "Password": "Sistran2026+",
+      "PersistSecurityInfo": true,
+      "TimeOut": 900
+    },
+    "Knowledge": {
+      "Provider": "SqlServer",
+      "Driver": "MSOLEDBSQL.1",
+      "Server": "10.70.10.105",
+      "Database": "sisecore_mig_ar",
+      "User": "sqluser",
+      "Password": "Sistran2026+",
+      "PersistSecurityInfo": true,
+      "TimeOut": 900
+    },
+    "Workspace": {
+      "Provider": "Sqlite",
+      "Database": "Data Source=Data\\Workspace.db"
+    }
   },
-  "SourceDB": {
-    "Provider": "MSOLEDBSQL.1",
-    "Servidor": "10.30.0.23",
-    "BaseDatos": "CARDINAL2G_MIGRACION",
-    "Usuario": "sa",
-    "Password": "T3chn0l0gy",
-    "PersistSecurityInfo": true,
-    "TimeOut": "90"
-  },
-  "DestinationDB": {
-    "Provider": "MSOLEDBSQL.1",
-    "Servidor": "10.70.10.105",
-    "BaseDatos": "sisecore_mig_test",
-    "Usuario": "sqluser",
-    "Password": "Sistran2026+",
-    "PersistSecurityInfo": true,
-    "TimeOut": "90"
-  },
-  "Workspace": {
-    "BaseDatos": "Data Source=Data\\Workspace.db"
-  },
+
   "DataToolkit": {
     "Logging": {
       "Enabled": true

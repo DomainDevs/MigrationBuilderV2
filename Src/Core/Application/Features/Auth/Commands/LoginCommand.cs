@@ -6,4 +6,4 @@ namespace Application.Features.Auth.Commands;
 public sealed record LoginCommand(
     string UserName,
     string Password)
-    : IRequest<LoginResponse?>;
+    : IRequest<AuthenticationResponse>;

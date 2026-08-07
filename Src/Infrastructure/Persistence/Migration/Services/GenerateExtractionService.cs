@@ -15,18 +15,18 @@ namespace Persistence.Migration.Services;
 
 public sealed class GenerateExtractionService : IGenerateExtractionService
 {
-    private readonly IUnitOfWork _source;
-    private readonly IUnitOfWork _target;
+    //private readonly IUnitOfWork _source;
+    //private readonly IUnitOfWork _target;
     private readonly MetadataService _metadataService;
     private readonly MigrationOptions _options;
 
     public GenerateExtractionService(
-        SqlServerContext context,
+        //SqlServerContext context,
         MetadataService metadataService,
         IOptions<MigrationOptions> options)
     {
-        _source = context.Source;
-        _target = context.Target;
+        //_source = context.Source;
+        //_target = context.Target;
         _metadataService = metadataService;
         _options = options.Value;
     }

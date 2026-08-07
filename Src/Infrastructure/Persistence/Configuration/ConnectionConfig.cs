@@ -1,22 +1,23 @@
 ﻿namespace Persistence.Configuration;
 
-public class ConnectionConfig
+public sealed class ConnectionConfig
 {
-    public string Provider { get; set; } = "MSOLEDBSQL.1";
-    public string Servidor { get; set; } = string.Empty;
-    public string BaseDatos { get; set; } = string.Empty;
-    public string Usuario { get; set; } = string.Empty;
+    public string Provider { get; set; } = string.Empty;
+    public string Driver { get; set; } = string.Empty;
+    public string Server { get; set; } = string.Empty;
+    public string Database { get; set; } = string.Empty;
+    public string User { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
-    public string TimeOut { get; set; } = string.Empty;
-    public bool PersistSecurityInfo { get; set; } = true;
+    public bool PersistSecurityInfo { get; set; }
+    public int TimeOut { get; set; }
 
     public string BuildConnectionStringETL()
     {
         return
             $"Provider={Provider};" +
-            $"Data Source={Servidor};" +
-            $"Initial Catalog={BaseDatos};" +
-            $"User ID={Usuario};" +
+            $"Data Source={Server};" +
+            $"Initial Catalog={Database};" +
+            $"User ID={User};" +
             $"Password={Password};" +
             $"Persist Security Info={PersistSecurityInfo};"+
             $"Connect Timeout={TimeOut};";
@@ -24,9 +25,9 @@ public class ConnectionConfig
     public string BuildConnectionStringSql()
     {
         return
-            $"Server={Servidor};" +
-            $"Database={BaseDatos};" +
-            $"User Id={Usuario};" +
+            $"Server={Server};" +
+            $"Database={Database};" +
+            $"User Id={User};" +
             $"Password={Password};" +
             $"Pooling=true;" +
             $"Min Pool Size=3;" +

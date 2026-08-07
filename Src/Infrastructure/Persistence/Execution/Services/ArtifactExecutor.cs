@@ -1,6 +1,7 @@
 ﻿using DataToolkit.BulkTransfer.Abstractions;
 using DataToolkit.BulkTransfer.Core;
 using DataToolkit.Library;
+using DataToolkit.Library.Connections.Context;
 using DataToolkit.Library.UnitOfWorkLayer;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
@@ -16,20 +17,23 @@ namespace Persistence.Execution.Services;
 
 public sealed class ArtifactExecutor
 {
-    private readonly IUnitOfWork _source;
-    private readonly IUnitOfWork _target;
+    private readonly IDatabaseContext _database;
+    //private readonly IUnitOfWork _source;
+    //private readonly IUnitOfWork _target;
     private readonly IConfiguration _configuration;
     private readonly IBulkTransferEngine _bulk;
     private readonly MetadataService _metadataService;
 
     public ArtifactExecutor(
-        SqlServerContext context,
+        //SqlServerContext context,
+        IDatabaseContext database,
         MetadataService metadataService,
         IConfiguration configuration,
         IBulkTransferEngine bulk)
     {
-        _source = context.Source;
-        _target = context.Target;
+        _database = database;
+        //_source = context.Source;
+        //_target = context.Target;
         _configuration = configuration;
         _bulk = bulk;
         _metadataService = metadataService;
@@ -44,8 +48,11 @@ public sealed class ArtifactExecutor
                 "No se encontró el artefacto.",
                 artifactPath);
 
-        using var source = _source.CreateNew();
-        using var target = _target.CreateNew();
+
+        using var source = _database["Source"].CreateNew();
+        using var target = _database["Target"].CreateNew();
+        //using var source = _source.CreateNew();
+        //using var target = _target.CreateNew();
 
         string extension = Path.GetExtension(artifactPath);
 
@@ -178,8 +185,8 @@ public sealed class ArtifactExecutor
 
         BulkTransferOptions options = new()
         {
-            BatchSize = 5000,
-            Timeout = 1000
+            BatchSize = _configuration.GetValue<int>("Migration:Execution:BatchSize"),
+            Timeout = _configuration.GetValue<int>("Migration:Execution:BulkCopyTimeout")
         };
 
         List<TableMetadata> artifactTable =
@@ -266,14 +273,23 @@ public sealed class ArtifactExecutor
         TableMetadata metadata = tables.Single();
 
         IEnumerable<ColumnMetadata> foreignKeys =
-            metadata.Columns.Where(x => !string.IsNullOrWhiteSpace(x.ForeignTable));
+            metadata.Columns
+                .Where(x => !string.IsNullOrWhiteSpace(x.ForeignTable));
 
         foreach (ColumnMetadata foreignKey in foreignKeys)
         {
+            // Ignora claves foráneas autorreferenciadas.
+            if (foreignKey.ForeignTable.Equals(
+                table,
+                StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
             string sql = $"""
-                SELECT COUNT(*)
-                FROM [{schema}].[{foreignKey.ForeignTable}]
-                """;
+            SELECT COUNT(*)
+            FROM [{schema}].[{foreignKey.ForeignTable}]
+            """;
 
             long total =
                 (await target.Sql.FromSqlAsync<long>(sql))
@@ -286,4 +302,5 @@ public sealed class ArtifactExecutor
             }
         }
     }
+
 }

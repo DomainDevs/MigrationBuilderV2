@@ -16,7 +16,14 @@ internal sealed class GoogleHandler<TUser>
         throw new NotImplementedException();
     }
 
-    public Task<AuthenticationResult> RefreshAsync(string refreshToken)
+    public Task<string?> GetUserIdAsync(string refreshToken)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<AuthenticationResult> RefreshAsync(
+        TUser user,
+        string refreshToken)
     {
         throw new NotImplementedException();
     }

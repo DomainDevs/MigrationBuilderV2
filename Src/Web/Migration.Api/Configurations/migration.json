@@ -6,6 +6,10 @@
       "MigrationTask": "MigrationTask",
       "Logs": "Logs",
       "Reports": "Reports"
+    },
+    "Execution": {
+      "BatchSize": 15000,
+      "BulkCopyTimeout": 900
     }
   }
 }

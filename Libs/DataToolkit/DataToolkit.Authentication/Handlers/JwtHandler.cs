@@ -10,18 +10,15 @@ internal sealed class JwtHandler<TUser> : IAuthenticationHandler<TUser>
     private readonly TokenEngine<TUser> _tokenEngine;
     private readonly RefreshTokenEngine _refreshTokenEngine;
     private readonly IRefreshTokenStore _refreshTokenStore;
-    private readonly IUserResolver<TUser> _userResolver;
 
     public JwtHandler(
         TokenEngine<TUser> tokenEngine,
         RefreshTokenEngine refreshTokenEngine,
-        IRefreshTokenStore refreshTokenStore,
-        IUserResolver<TUser> userResolver)
+        IRefreshTokenStore refreshTokenStore)
     {
         _tokenEngine = tokenEngine;
         _refreshTokenEngine = refreshTokenEngine;
         _refreshTokenStore = refreshTokenStore;
-        _userResolver = userResolver;
     }
 
     public async Task<AuthenticationResult> SignInAsync(TUser user)
@@ -64,9 +61,27 @@ internal sealed class JwtHandler<TUser> : IAuthenticationHandler<TUser>
         await _refreshTokenStore.RevokeAllAsync(entry.UserId);
     }
 
-    public async Task<AuthenticationResult> RefreshAsync(
+    public async Task<string?> GetUserIdAsync(
         string refreshToken)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(refreshToken);
+
+        RefreshTokenEntry? entry =
+            await _refreshTokenStore.FindAsync(refreshToken);
+
+        if (entry is null || !entry.Token.IsActive)
+        {
+            return null;
+        }
+
+        return entry.UserId;
+    }
+
+    public async Task<AuthenticationResult> RefreshAsync(
+        TUser user,
+        string refreshToken)
+    {
+        ArgumentNullException.ThrowIfNull(user);
         ArgumentException.ThrowIfNullOrWhiteSpace(refreshToken);
 
         RefreshTokenEntry? entry =
@@ -84,26 +99,21 @@ internal sealed class JwtHandler<TUser> : IAuthenticationHandler<TUser>
                 "Refresh token expired or revoked.");
         }
 
-        TUser? user =
-            await _userResolver.FindAsync(entry.UserId);
-
-        if (user is null)
-        {
-            throw new InvalidOperationException(
-                "User not found.");
-        }
-
         AccessTokenEntry accessToken =
             _tokenEngine.CreateToken(user);
+
+        if (accessToken.UserId != entry.UserId)
+        {
+            throw new InvalidOperationException(
+                "Refresh token does not belong to the specified user.");
+        }
 
         RefreshToken newRefreshToken =
             _refreshTokenEngine.Generate();
 
-        await _refreshTokenStore.RevokeAsync(
-            refreshToken);
+        await _refreshTokenStore.RevokeAsync(refreshToken);
 
-        await _refreshTokenStore.SaveAccessTokenAsync(
-            accessToken);
+        await _refreshTokenStore.SaveAccessTokenAsync(accessToken);
 
         await _refreshTokenStore.SaveAsync(
             accessToken.UserId,

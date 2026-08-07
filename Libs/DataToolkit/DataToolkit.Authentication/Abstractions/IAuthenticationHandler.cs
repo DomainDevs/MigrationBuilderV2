@@ -8,10 +8,16 @@ namespace DataToolkit.Authentication.Abstractions;
 /// <typeparam name="TUser">Tipo de usuario.</typeparam>
 public interface IAuthenticationHandler<TUser>
 {
-    Task<AuthenticationResult> SignInAsync(TUser user);
+    Task<AuthenticationResult> SignInAsync(
+        TUser user);
 
-    Task SignOutAsync(string refreshToken);
+    Task SignOutAsync(
+        string refreshToken);
+
+    Task<string?> GetUserIdAsync(
+        string refreshToken);
 
     Task<AuthenticationResult> RefreshAsync(
+        TUser user,
         string refreshToken);
 }

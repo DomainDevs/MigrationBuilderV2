@@ -2,6 +2,7 @@
 using Application.Features.Migration.Commands;
 using Application.Features.Migration.DTOs;
 using DataToolkit.Library;
+using DataToolkit.Library.Connections.Context;
 using DataToolkit.Library.UnitOfWorkLayer;
 using Domain.Enums;
 using Microsoft.Extensions.Options;
@@ -15,18 +16,20 @@ namespace Persistence.Migration.Services;
 
 public sealed class GenerateDdlService : IGenerateDdlService
 {
-    private readonly IUnitOfWork _source;
-    private readonly IUnitOfWork _target;
+    private readonly IDatabaseContext _database;
+    //private readonly IUnitOfWork _source;
+    //private readonly IUnitOfWork _target;
     private readonly MetadataService _metadataService;
     private readonly MigrationOptions _options;
 
     public GenerateDdlService(
-        SqlServerContext context,
+        IDatabaseContext database, //SqlServerContext context,
         MetadataService metadataService,
         IOptions<MigrationOptions> options)
     {
-        _source = context.Source;
-        _target = context.Target;
+        _database = database;
+        //_source = context.Source;
+        //_target = context.Target;
         _metadataService = metadataService;
         _options = options.Value;
     }

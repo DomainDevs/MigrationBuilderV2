@@ -41,7 +41,7 @@ public static class SwaggerServiceCollectionExtensions
                 }
             });
 
-            c.OperationFilter<SwaggerSecurityRequirement>();
+            //c.OperationFilter<SwaggerSecurityRequirement>();
         });
 
         return services;

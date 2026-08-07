@@ -1,5 +1,7 @@
 using App.Configurations;
 using Application;
+using Application.Features.Auth.DTOs;
+using DataToolkit.Authentication.Extensions;
 using DataToolkit.Bootstrap.Diagnostics;
 using Infrastructure;
 using Infrastructure.Documentation;
@@ -46,37 +48,34 @@ try
     );
 
     // 1. Registras el servicio indicando cómo leer tu entidad de usuario
-    /*
     builder.Services.AddDataToolkitAuthentication<ApplicationUser>(builder.Configuration["Jwt:Secret"]!)
-        .MapUser(user =>
-        {
-            user.UserId = u => u.Id;
-            user.Claims = u => new[] {
+    .MapUser(user =>
+    {
+        user.UserId = u => u.Id;
+        user.Claims = u => new[] {
             new Claim(
                 ClaimTypes.Role,u.Role)
-            };
-        })
-        .UseUserResolver<UserService>()
-        .AddJwt(jwt =>
-        {
-            jwt.Issuer =
-                builder.Configuration["Jwt:Issuer"]!;
+        };
+    })
+    .AddJwt(jwt =>
+    {
+        jwt.Issuer =
+            builder.Configuration["Jwt:Issuer"]!;
 
-            jwt.Audience =
-                builder.Configuration["Jwt:Audience"]!;
+        jwt.Audience =
+            builder.Configuration["Jwt:Audience"]!;
 
-            jwt.AccessTokenLifetimeMinutes =
-                int.Parse(
-                    builder.Configuration["Jwt:AccessTokenLifetimeMinutes"]!);
+        jwt.AccessTokenLifetimeMinutes =
+            int.Parse(
+                builder.Configuration["Jwt:AccessTokenLifetimeMinutes"]!);
 
-            jwt.RefreshTokenLifetimeHours =
-                int.Parse(
-                    builder.Configuration["Jwt:RefreshTokenLifetimeHours"]!);
-        });
-    */
-
+        jwt.RefreshTokenLifetimeHours =
+            int.Parse(
+                builder.Configuration["Jwt:RefreshTokenLifetimeHours"]!);
+    });
 
     builder.Services.AddControllers();
+
 
     // ---------------------------------------------------------------------
     // Build
@@ -88,11 +87,6 @@ try
     // ---------------------------------------------------------------------
     app.UseInfrastructure(builder.Configuration);
 
-    // Swagger
-    //if (builder.Configuration.GetValue<bool>("SwaggerSettings:Enabled"))
-    //{
-    //   app.UseOpenApiDocumentation(builder.Configuration);
-    //}
     await app.UsePersistenceAsync();
 
     // ---------------------------------------------------------------------

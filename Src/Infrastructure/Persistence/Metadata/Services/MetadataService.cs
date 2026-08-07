@@ -1,4 +1,5 @@
 ﻿using DataToolkit.Library;
+using DataToolkit.Library.Connections.Context;
 using DataToolkit.Library.UnitOfWorkLayer;
 using Persistence.Connect.Context;
 using Persistence.Metadata.Queries;
@@ -7,13 +8,18 @@ namespace Persistence.Metadata.Services;
 
 public sealed class MetadataService
 {
-    private readonly IUnitOfWork _source;
-    private readonly IUnitOfWork _target;
+    private readonly IDatabaseContext _database;
+    //private readonly IUnitOfWork _source;
+    //private readonly IUnitOfWork _target;
 
-    public MetadataService(SqlServerContext context)
+    public MetadataService(
+        //SqlServerContext context
+        IDatabaseContext database
+        )
     {
-        _source = context.Source;
-        _target = context.Target;
+        _database = database;
+        //_source = context.Source;
+        //_target = context.Target;
     }
 
     public async Task<List<TableMetadata>> ExtractMetadataAsync(
@@ -21,9 +27,15 @@ public sealed class MetadataService
         string? schema = null,
         List<string>? tables = null)
     {
+        /*
         using IUnitOfWork unitOfWork = isSource
             ? _source.CreateNew()
             : _target.CreateNew();
+        */
+
+        using IUnitOfWork unitOfWork = isSource
+            ? _database["Source"].CreateNew()
+            : _database["Target"].CreateNew();
 
         var rows = await MetadataQueries.GetMetadataAsync(
             unitOfWork,

@@ -16,3 +16,4 @@ Src/Web/Migration.Api/Logs/
 Src/Web/Migration.Api/bin/
 Build/Release/
 Libs/DataToolkit/DataToolkit.Authentication/obj/
+Libs/DataToolkit/DataToolkit.Authentication/bin/

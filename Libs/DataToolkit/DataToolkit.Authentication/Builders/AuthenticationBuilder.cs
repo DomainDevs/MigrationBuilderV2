@@ -10,13 +10,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 
 namespace DataToolkit.Authentication.Builders;
-
 public sealed class AuthenticationBuilder<TUser>
 {
     private readonly IServiceCollection _services;
     private readonly string _secretKey;
     private readonly AuthenticationOptions<TUser> _options = new();
-
 
     internal AuthenticationBuilder(
         IServiceCollection services,
@@ -25,7 +23,6 @@ public sealed class AuthenticationBuilder<TUser>
         _services = services;
         _secretKey = secretKey;
     }
-
 
     /// <summary>
     /// Configura el mapeo del usuario.
@@ -39,19 +36,6 @@ public sealed class AuthenticationBuilder<TUser>
 
         return this;
     }
-
-
-    /// <summary>
-    /// Configura el resolvedor de usuarios.
-    /// </summary>
-    public AuthenticationBuilder<TUser> UseUserResolver<TResolver>()
-        where TResolver : class, IUserResolver<TUser>
-    {
-        _services.AddScoped<IUserResolver<TUser>, TResolver>();
-
-        return this;
-    }
-
 
     /// <summary>
     /// Configura autenticación mediante JWT.
@@ -67,12 +51,10 @@ public sealed class AuthenticationBuilder<TUser>
 
         options.Validate();
 
-
         UserMapping<TUser> mapping = _options.Build();
 
         SymmetricSecurityKey signingKey =
             KeyFactory.Create(_secretKey);
-
 
         _services
             .AddAuthentication(authentication =>
@@ -101,7 +83,6 @@ public sealed class AuthenticationBuilder<TUser>
                         ClockSkew = TimeSpan.Zero
                     };
 
-
                 jwt.Events = new JwtBearerEvents
                 {
                     OnTokenValidated =
@@ -109,9 +90,7 @@ public sealed class AuthenticationBuilder<TUser>
                 };
             });
 
-
         _services.AddSingleton(mapping);
-
 
         _services.AddSingleton<TokenEngine<TUser>>(_ =>
             new TokenEngine<TUser>(
@@ -121,27 +100,22 @@ public sealed class AuthenticationBuilder<TUser>
                 mapping,
                 options.AccessTokenLifetimeMinutes));
 
-
         _services.AddSingleton<RefreshTokenEngine>(_ =>
             new RefreshTokenEngine(
                 TimeSpan.FromHours(
                     options.RefreshTokenLifetimeHours)));
 
-
         _services.AddSingleton<IRefreshTokenStore,
             MemoryRefreshTokenStore>();
-
 
         _services.AddScoped<IAuthenticationHandler<TUser>,
             JwtHandler<TUser>>();
 
-
-        _services.AddScoped<AuthenticationService<TUser>>();
-
+        _services.AddScoped<IAuthenticationService<TUser>, 
+            AuthenticationService<TUser>>();
 
         return this;
     }
-
 
     /// <summary>
     /// Configura autenticación mediante Cookies.

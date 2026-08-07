@@ -6,7 +6,7 @@ namespace DataToolkit.Authentication;
 /// <summary>
 /// Servicio principal de autenticación.
 /// </summary>
-public sealed class AuthenticationService<TUser>
+public sealed class AuthenticationService<TUser> : IAuthenticationService<TUser>
 {
     private readonly IAuthenticationHandler<TUser> _handler;
 
@@ -29,12 +29,23 @@ public sealed class AuthenticationService<TUser>
 
         return _handler.SignOutAsync(refreshToken);
     }
-    public Task<AuthenticationResult> RefreshAsync(
-        string refreshToken)
+
+    public Task<string?> GetUserIdAsync(string refreshToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(refreshToken);
 
-        return _handler.RefreshAsync(refreshToken);
+        return _handler.GetUserIdAsync(refreshToken);
     }
 
+    public Task<AuthenticationResult> RefreshAsync(
+        TUser user,
+        string refreshToken)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+        ArgumentException.ThrowIfNullOrWhiteSpace(refreshToken);
+
+        return _handler.RefreshAsync(
+            user,
+            refreshToken);
+    }
 }
