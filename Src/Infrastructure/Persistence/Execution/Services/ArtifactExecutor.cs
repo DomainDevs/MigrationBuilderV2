@@ -11,6 +11,7 @@ using Persistence.Connect.Context;
 using Persistence.Execution.ETL;
 using Persistence.Execution.Validation;
 using Persistence.Metadata.Services;
+using Shared.Options;
 using System.Text;
 
 namespace Persistence.Execution.Services;
@@ -23,6 +24,10 @@ public sealed class ArtifactExecutor
     private readonly IConfiguration _configuration;
     private readonly IBulkTransferEngine _bulk;
     private readonly MetadataService _metadataService;
+    private readonly MigrationOptions _migrationOptions;
+
+    private readonly ConnectionConfig _sourceConfig;
+    private readonly ConnectionConfig _targetConfig;
 
     public ArtifactExecutor(
         //SqlServerContext context,
@@ -37,6 +42,21 @@ public sealed class ArtifactExecutor
         _configuration = configuration;
         _bulk = bulk;
         _metadataService = metadataService;
+
+        _sourceConfig =
+            configuration
+                .GetSection("Connections:Source")
+                .Get<ConnectionConfig>()
+            ?? throw new InvalidOperationException(
+                "No se encontró la configuración Connections:Source.");
+
+        _targetConfig =
+            configuration
+                .GetSection("Connections:Target")
+                .Get<ConnectionConfig>()
+            ?? throw new InvalidOperationException(
+                "No se encontró la configuración Connections:Target.");
+
     }
 
     public async Task ExecuteAsync(string artifactPath)
@@ -156,7 +176,7 @@ public sealed class ArtifactExecutor
             sql);
     }
 
-    private static async Task ExecuteSqlBatchesAsync(
+    private async Task ExecuteSqlBatchesAsync(
         IUnitOfWork target,
         string sql)
     {
@@ -165,7 +185,8 @@ public sealed class ArtifactExecutor
             if (string.IsNullOrWhiteSpace(batch))
                 continue;
 
-            await target.Sql.ExecuteAsync(batch);
+            await target.Sql.ExecuteAsync(batch, 
+                commandTimeout: _targetConfig.TimeOut);
         }
     }
 

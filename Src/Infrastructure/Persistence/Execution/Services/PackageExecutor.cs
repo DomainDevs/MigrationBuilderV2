@@ -152,10 +152,13 @@ public sealed class PackageExecutor
                 }catch (Exception ex)
                 {
                     log.Ok = false;
-                    log.Msg = ex.Message;
+                    log.Msg = $"ERROR:{log.Name} - {ex.Message}";
 
-                    throw;
-                }finally
+                    throw new InvalidOperationException(
+                        $"Error ejecutando '{log.Name}': {ex.Message}",
+                        ex);
+                }
+                finally
                 {
                     log.End = DateTime.UtcNow;
                     logs.Add(log);

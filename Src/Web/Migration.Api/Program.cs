@@ -3,6 +3,7 @@ using Application;
 using Application.Features.Auth.DTOs;
 using DataToolkit.Authentication.Extensions;
 using DataToolkit.Bootstrap.Diagnostics;
+using FluentValidation.Internal;
 using Infrastructure;
 using Infrastructure.Documentation;
 using Persistence;

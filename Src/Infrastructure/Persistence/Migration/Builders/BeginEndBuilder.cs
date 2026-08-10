@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System;
+using System.Text;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Persistence.Migration.Builders;
@@ -49,23 +50,27 @@ internal static class BeginEndBuilder
         if (artifactPrefix == "WF")
         {        
             sql.AppendLine("-- Limpiar tabla de destino");
-            sql.AppendLine($"WHILE 1 = 1");
-            sql.AppendLine($"BEGIN ");
-            sql.AppendLine($"   DELETE TOP(10000) ");
-            sql.AppendLine($"   FROM [{schema}].[{tableName}]; ");
-            sql.AppendLine($"   IF @@ROWCOUNT = 0 ");
-            sql.AppendLine($"   BREAK; ");
-            sql.AppendLine($"END; ");
-            sql.AppendLine();
-        }else
-        {
-            sql.AppendLine("-- Limpiar tabla de destino");
+            sql.AppendLine($"SET NOCOUNT ON; ");
             sql.AppendLine($"WHILE 1 = 1");
             sql.AppendLine($"BEGIN ");
             sql.AppendLine($"   DELETE TOP(6000) ");
             sql.AppendLine($"   FROM [{schema}].[{tableName}]; ");
             sql.AppendLine($"   IF @@ROWCOUNT = 0 ");
             sql.AppendLine($"   BREAK; ");
+            sql.AppendLine($"   --CHECKPOINT; ");
+            sql.AppendLine($"END; ");
+            sql.AppendLine();
+        }else
+        {
+            sql.AppendLine("-- Limpiar tabla de destino");
+            sql.AppendLine($"SET NOCOUNT ON; ");
+            sql.AppendLine($"WHILE 1 = 1");
+            sql.AppendLine($"BEGIN ");
+            sql.AppendLine($"   DELETE TOP(4000) ");
+            sql.AppendLine($"   FROM [{schema}].[{tableName}]; ");
+            sql.AppendLine($"   IF @@ROWCOUNT = 0 ");
+            sql.AppendLine($"   BREAK; ");
+            sql.AppendLine($"   --CHECKPOINT; ");
             sql.AppendLine($"END; ");
             sql.AppendLine();
         }
