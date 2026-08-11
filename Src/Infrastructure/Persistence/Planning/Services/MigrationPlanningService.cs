@@ -23,7 +23,7 @@ public sealed class MigrationPlanningService
         List<string>? tables)
     {
         var metadata = await _metadataService.ExtractMetadataAsync(
-            true,   //source,
+            "Source",   //source,
             schema,
             tables);
 
@@ -36,7 +36,7 @@ public sealed class MigrationPlanningService
         List<string>? tables)
     {
         var metadata = await _metadataService.ExtractMetadataAsync(
-            false, //source,
+            "Target", //source,
             schema,
             tables);
 

@@ -2,11 +2,8 @@
 using Application.Features.Migration.Commands;
 using Application.Features.Migration.DTOs;
 using DataToolkit.Library;
-using DataToolkit.Library.Connections.Context;
-using DataToolkit.Library.UnitOfWorkLayer;
 using Domain.Enums;
 using Microsoft.Extensions.Options;
-using Persistence.Connect.Context;
 using Persistence.Metadata.Services;
 using Persistence.Migration.Builders;
 using Persistence.Migration.Metadata;
@@ -14,28 +11,21 @@ using Shared.Options;
 
 namespace Persistence.Migration.Services;
 
-public sealed class GenerateDdlService : IGenerateDdlService
+public sealed class GenerateValidationService : IGenerateValidationService
 {
-    private readonly IDatabaseContext _database;
-    //private readonly IUnitOfWork _source;
-    //private readonly IUnitOfWork _target;
     private readonly MetadataService _metadataService;
     private readonly MigrationOptions _options;
 
-    public GenerateDdlService(
-        IDatabaseContext database, //SqlServerContext context,
+    public GenerateValidationService(
         MetadataService metadataService,
         IOptions<MigrationOptions> options)
     {
-        _database = database;
-        //_source = context.Source;
-        //_target = context.Target;
         _metadataService = metadataService;
         _options = options.Value;
     }
 
-    public async Task<MigrationResponseDto> GenerateDdlScriptsAsync(
-        GenerateDdlCommand command)
+    public async Task<MigrationResponseDto> GenerateValidationAsync(
+        GenerateValidationCommand command)
     {
         string projectPath =
             Path.Combine(
@@ -53,6 +43,12 @@ public sealed class GenerateDdlService : IGenerateDdlService
                 projectPath,
                 _options.Folders.MigrationTask);
 
+        if (!Directory.Exists(outputFolder))
+        {
+            throw new IOException(
+                $"El directorio de tareas de migración '{outputFolder}' no existe.");
+        }
+
         string artifactPrefix =
             command.ArtifactType == ArtifactType.WorkFile
                 ? "WF"
@@ -64,67 +60,47 @@ public sealed class GenerateDdlService : IGenerateDdlService
         int generatedCount = 0;
         int skippedCount = 0;
 
-        Task<List<TableMetadata>> sourceTask =
-            _metadataService.ExtractMetadataAsync(
-                "Source",
-                command.Schema,
-                command.Tables);
-
-        Task<List<TableMetadata>> targetTask =
-            _metadataService.ExtractMetadataAsync(
+        List<TableMetadata> targetMetadata =
+            await _metadataService.ExtractMetadataAsync(
                 "Target",
                 command.Schema,
                 command.Tables);
 
-        await Task.WhenAll(sourceTask, targetTask);
+        targetMetadata =
+            MetadataNormalizer.NormalizeColumns(
+                targetMetadata);
 
-        List<TableMetadata> sourceMetadata =
-            MetadataNormalizer.NormalizeColumns(sourceTask.Result);
+        HashSet<string> existingTables =
+            targetMetadata
+                .Select(t => t.Name)
+                .ToHashSet(
+                    StringComparer.OrdinalIgnoreCase);
 
-        List<TableMetadata> targetMetadata =
-            MetadataNormalizer.NormalizeColumns(targetTask.Result);
-
-        Dictionary<string, TableMetadata> sourceLookup =
-            sourceMetadata.ToDictionary(
-                t => $"{t.Schema}.{t.Name}",
-                StringComparer.OrdinalIgnoreCase);
+        foreach (string table in command.Tables)
+        {
+            if (!existingTables.Contains(table))
+            {
+                warnings.Add(
+                    $"La tabla solicitada '{command.Schema}.{table}' " +
+                    "no existe en la base de datos Target.");
+            }
+        }
 
         foreach (TableMetadata targetTable in targetMetadata)
         {
             string tableKey =
                 $"{targetTable.Schema}.{targetTable.Name}";
 
-            sourceLookup.TryGetValue(
-                tableKey,
-                out TableMetadata? sourceTable);
-
-            string fileName =
-                $"DDL_{targetTable.Schema}.{artifactPrefix}_{targetTable.Name}.sql";
-
-            string ddl =
-                DdlBuilder.BuildCreateTable(
-                    sourceTable,
-                    targetTable,
-                    command.ArtifactType);
-
             string artifactFolder =
                 Path.Combine(
                     outputFolder,
                     tableKey);
 
-            BeginEndBuilder.BuildBegin(
-                outputFolder,
-                artifactPrefix,
-                targetTable.Schema,
-                targetTable.Name);
+            Directory.CreateDirectory(
+                artifactFolder);
 
-            BeginEndBuilder.BuildEnd(
-                outputFolder,
-                artifactPrefix,
-                targetTable.Schema,
-                targetTable.Name);
-
-            Directory.CreateDirectory(artifactFolder);
+            string fileName =
+                $"VAL_{targetTable.Schema}.{artifactPrefix}_{targetTable.Name}.sql";
 
             string filePath =
                 Path.Combine(
@@ -141,9 +117,13 @@ public sealed class GenerateDdlService : IGenerateDdlService
                 continue;
             }
 
+            string sql =
+                ValidationBuilder.BuildValidationScript(
+                    targetTable);
+
             await File.WriteAllTextAsync(
                 filePath,
-                ddl);
+                sql);
 
             generatedCount++;
             generatedFiles.Add(fileName);

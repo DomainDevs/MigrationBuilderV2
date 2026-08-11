@@ -76,7 +76,9 @@ public sealed class GeneratePlanService : IGeneratePlanService
             List<string> warnings = [];
 
             //Destino
-            List<TableMetadata> metadata = await _metadataService.ExtractMetadataAsync(false, command.Schema, command.Tables);
+            List<TableMetadata> metadata = await _metadataService.ExtractMetadataAsync(
+                "Target", 
+                command.Schema, command.Tables);
 
             HashSet<string> existingTables = metadata.Select(t => t.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
 

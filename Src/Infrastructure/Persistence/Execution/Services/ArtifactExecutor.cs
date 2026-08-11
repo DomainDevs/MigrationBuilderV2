@@ -212,7 +212,7 @@ public sealed class ArtifactExecutor
 
         List<TableMetadata> artifactTable =
             await _metadataService.ExtractMetadataAsync(
-                false,
+                "Target",
                 schema,
                 tables);
 
@@ -287,7 +287,7 @@ public sealed class ArtifactExecutor
     {
         List<TableMetadata> tables =
             await _metadataService.ExtractMetadataAsync(
-                false,
+                "Target",
                 schema,
                 [table]);
 

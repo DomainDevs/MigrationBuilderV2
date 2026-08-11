@@ -69,7 +69,7 @@ public sealed class GenerateLoadService : IGenerateLoadService
 
         List<TableMetadata> metadata =
             await _metadataService.ExtractMetadataAsync(
-                false,
+                "Target",
                 command.Schema,
                 command.Tables);
 

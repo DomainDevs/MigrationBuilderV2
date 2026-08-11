@@ -114,6 +114,38 @@ public class MigrationController : ControllerBase
         return Ok(ApiResponse.Success(result, "Script de carga generado correctamente"));
     }
 
+    // =====================================
+    // POST: api/Migration/validation
+    // =====================================
+    [HttpPost("validation")]
+    [ProducesResponseType(typeof(ResponseDTO<string>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ResponseDTO<object>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GenerateValidation(
+        [FromBody] MigrationRequestDto dto)
+    {
+        if (!ModelState.IsValid)
+        {
+            var errors = ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(e => e.ErrorMessage)
+                .ToList();
+
+            return BadRequest(
+                ApiResponse.Fail(
+                    "Error de validación",
+                    errors));
+        }
+
+        var result =
+            await _mediator.Send(
+                dto.ToGenerateValidationCommand());
+
+        return Ok(
+            ApiResponse.Success(
+                result,
+                "Script de validación generado correctamente"));
+    }
+
     /*
     // =====================================
     // POST: api/Migration/execution

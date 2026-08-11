@@ -27,8 +27,7 @@ public sealed class DependencyResolverService
 
         // 2. Traer la metadata completa del esquema en UNA SOLA llamada I/O (en lugar de N llamadas en bucle)
         List<TableMetadata> allMetadata = await _metadataService.ExtractMetadataAsync(
-            false,
-            //source,
+            "Target",
             schema,
             tables: null); // Trae el mapa completo del esquema
 

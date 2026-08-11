@@ -28,5 +28,6 @@ public class MigrationRequestDto
     /// Tablas específicas a comparar. 
     /// Null o vacío = todas las tablas. 
     /// </summary>
+    [DefaultValue("[]")]
     public List<string> Tables { get; set; } = [];
 }

@@ -63,13 +63,13 @@ public sealed class GenerateExtractionService : IGenerateExtractionService
 
         List<TableMetadata> sourceMetadata =
             await _metadataService.ExtractMetadataAsync(
-                true,
+                "Source",
                 command.Schema,
                 command.Tables);
 
         List<TableMetadata> targetMetadata =
             await _metadataService.ExtractMetadataAsync(
-                false,
+                "Target",
                 command.Schema,
                 command.Tables);
 
