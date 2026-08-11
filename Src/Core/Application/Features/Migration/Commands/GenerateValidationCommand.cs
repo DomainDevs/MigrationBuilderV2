@@ -5,6 +5,8 @@ using MediatR;
 namespace Application.Features.Migration.Commands;
 
 public sealed record GenerateValidationCommand(
+    string Source,
+    string Target,
     string ProjectName,
     string? Schema,
     ArtifactType ArtifactType,

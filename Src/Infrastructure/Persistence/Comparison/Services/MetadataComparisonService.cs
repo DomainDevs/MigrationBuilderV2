@@ -2,6 +2,7 @@
 using Application.Features.Comparison.Commands;
 using Application.Features.Comparison.DTOs;
 using DataToolkit.Library;
+using Microsoft.Extensions.Configuration;
 using Persistence.Metadata.Services;
 using Persistence.Migration.Metadata;
 
@@ -10,11 +11,14 @@ namespace Persistence.Comparison.Services;
 public sealed class MetadataComparisonService : IMetadataComparisonService
 {
     private readonly MetadataService _metadataService;
+    private readonly IConfiguration _configuration;
 
     public MetadataComparisonService(
-        MetadataService metadataService)
+        MetadataService metadataService,
+        IConfiguration configuration)
     {
         _metadataService = metadataService;
+        _configuration = configuration;
     }
 
     public async Task<MetadataComparisonResult> CompareAsync(

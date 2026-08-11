@@ -3,6 +3,7 @@ using Application.Features.Migration.Commands;
 using Application.Features.Migration.DTOs;
 using DataToolkit.Library;
 using Domain.Enums;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Persistence.Metadata.Services;
 using Persistence.Migration.Builders;
@@ -15,13 +16,16 @@ public sealed class GenerateValidationService : IGenerateValidationService
 {
     private readonly MetadataService _metadataService;
     private readonly MigrationOptions _options;
+    private readonly IConfiguration _configuration;
 
     public GenerateValidationService(
         MetadataService metadataService,
-        IOptions<MigrationOptions> options)
+        IOptions<MigrationOptions> options,
+        IConfiguration configuration)
     {
         _metadataService = metadataService;
         _options = options.Value;
+        _configuration = configuration;
     }
 
     public async Task<MigrationResponseDto> GenerateValidationAsync(
@@ -53,6 +57,8 @@ public sealed class GenerateValidationService : IGenerateValidationService
             command.ArtifactType == ArtifactType.WorkFile
                 ? "WF"
                 : "STG";
+        String strSource = _configuration[$"Connections:{command.Source}:Database"];
+        String strTarget = _configuration[$"Connections:{command.Target}:Database"];
 
         List<string> generatedFiles = [];
         List<string> warnings = [];
@@ -62,7 +68,7 @@ public sealed class GenerateValidationService : IGenerateValidationService
 
         List<TableMetadata> targetMetadata =
             await _metadataService.ExtractMetadataAsync(
-                "Target",
+                command.Target,
                 command.Schema,
                 command.Tables);
 
@@ -119,6 +125,7 @@ public sealed class GenerateValidationService : IGenerateValidationService
 
             string sql =
                 ValidationBuilder.BuildValidationScript(
+                    command.Source, command.Target,
                     targetTable);
 
             await File.WriteAllTextAsync(

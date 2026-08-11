@@ -19,8 +19,7 @@ namespace Persistence.Execution.Services;
 public sealed class ArtifactExecutor
 {
     private readonly IDatabaseContext _database;
-    //private readonly IUnitOfWork _source;
-    //private readonly IUnitOfWork _target;
+
     private readonly IConfiguration _configuration;
     private readonly IBulkTransferEngine _bulk;
     private readonly MetadataService _metadataService;

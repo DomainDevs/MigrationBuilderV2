@@ -5,6 +5,8 @@ namespace Persistence.Migration.Builders;
 public static class ValidationBuilder
 {
     public static string BuildValidationScript(
+        string Source,
+        string Target,
         TableMetadata table)
     {
         string columnList =
@@ -25,24 +27,24 @@ public static class ValidationBuilder
         FROM
         (
             SELECT {{columnList}}
-            FROM [Target].[{{table.Schema}}].[{{table.Name}}]
+            FROM [{{Source}}].[{{table.Schema}}].[{{table.Name}}]
 
             EXCEPT
 
             SELECT {{columnList}}
-            FROM [Test].[{{table.Schema}}].[{{table.Name}}]
+            FROM [{{Target}}].[{{table.Schema}}].[{{table.Name}}]
         ) AS D;
 
         SELECT COUNT_BIG(*) AS OnlyInTest
         FROM
         (
             SELECT {{columnList}}
-            FROM [Test].[{{table.Schema}}].[{{table.Name}}]
+            FROM [{{Target}}].[{{table.Schema}}].[{{table.Name}}]
 
             EXCEPT
 
             SELECT {{columnList}}
-            FROM [Target].[{{table.Schema}}].[{{table.Name}}]
+            FROM [{{Source}}].[{{table.Schema}}].[{{table.Name}}]
         ) AS D;
         """;
     }

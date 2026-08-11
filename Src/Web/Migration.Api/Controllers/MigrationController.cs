@@ -121,7 +121,7 @@ public class MigrationController : ControllerBase
     [ProducesResponseType(typeof(ResponseDTO<string>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ResponseDTO<object>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GenerateValidation(
-        [FromBody] MigrationRequestDto dto)
+        [FromBody] MigrationComparisonRequestDto dto)
     {
         if (!ModelState.IsValid)
         {

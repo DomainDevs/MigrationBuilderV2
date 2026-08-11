@@ -16,5 +16,5 @@ public static partial class MigrationMapper
 
     public static partial GenerateLoadCommand ToGenerateLoadCommand(this MigrationRequestDto dto);
 
-    public static partial GenerateValidationCommand ToGenerateValidationCommand(this MigrationRequestDto dto);
+    public static partial GenerateValidationCommand ToGenerateValidationCommand(this MigrationComparisonRequestDto dto);
 }
