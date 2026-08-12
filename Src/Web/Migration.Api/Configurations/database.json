@@ -8,7 +8,7 @@
       "User": "sa",
       "Password": "T3chn0l0gy",
       "PersistSecurityInfo": true,
-      "TimeOut": 1000
+      "TimeOut": 1200
     },
     "Target": {
       "Provider": "SqlServer",
@@ -18,7 +18,7 @@
       "User": "sqluser",
       "Password": "Sistran2026+",
       "PersistSecurityInfo": true,
-      "TimeOut": 1000
+      "TimeOut": 1200
     },
     "Knowledge": {
       "Provider": "SqlServer",
@@ -28,7 +28,7 @@
       "User": "sqluser",
       "Password": "Sistran2026+",
       "PersistSecurityInfo": true,
-      "TimeOut": 1000
+      "TimeOut": 1200
     },
     "Workspace": {
       "Provider": "Sqlite",
