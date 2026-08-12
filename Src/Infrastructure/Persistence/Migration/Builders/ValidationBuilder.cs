@@ -23,7 +23,7 @@ public static class ValidationBuilder
 
         SET NOCOUNT ON;
 
-        SELECT COUNT_BIG(*) AS OnlyInTarget
+        SELECT COUNT_BIG(*) AS OnlyInSource
         FROM
         (
             SELECT {{columnList}}
@@ -35,7 +35,7 @@ public static class ValidationBuilder
             FROM [{{Target}}].[{{table.Schema}}].[{{table.Name}}]
         ) AS D;
 
-        SELECT COUNT_BIG(*) AS OnlyInTest
+        SELECT COUNT_BIG(*) AS OnlyInTarget
         FROM
         (
             SELECT {{columnList}}

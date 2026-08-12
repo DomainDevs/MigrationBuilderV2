@@ -10,4 +10,9 @@ public static partial class MetadataMapper
     // DTO → Command
     public static partial CompareMetadataCommand ToCompareMetadataCommand(
         this MetadataRequestDto dto);
+
+    // DTO → Command
+    public static partial CompareValidationCommand ToCompareValidationCommand(
+        this CompareValidationRequestDto dto);
+
 }

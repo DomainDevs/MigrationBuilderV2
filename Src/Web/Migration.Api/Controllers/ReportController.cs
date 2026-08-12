@@ -7,14 +7,17 @@ namespace Migration.Api.Controllers;
 
 [ApiController]
 [Route("api/comparison")]
-public sealed class ComparisonController : ControllerBase
+public sealed class ReportController : ControllerBase
 {
     private readonly CompareMetadataHandler _handler;
+    private readonly CompareValidationHandler _validationHandler;
 
-    public ComparisonController(
-        CompareMetadataHandler handler)
+    public ReportController(
+        CompareMetadataHandler handler, 
+        CompareValidationHandler validationHandler)
     {
         _handler = handler;
+        _validationHandler = validationHandler;
     }
 
     [HttpPost("metadata")]
@@ -25,6 +28,18 @@ public sealed class ComparisonController : ControllerBase
 
         var result =
             await _handler.HandleAsync(command);
+
+        return Ok(result);
+    }
+
+    [HttpPost("validation")]
+    public async Task<IActionResult> CompareValidation(
+        [FromBody] CompareValidationRequestDto dto)
+    {
+        var command = dto.ToCompareValidationCommand();
+
+        var result =
+            await _validationHandler.HandleAsync(command);
 
         return Ok(result);
     }

@@ -1,63 +1,39 @@
-﻿using Application.Abstractions.Migration;
+﻿using Application.Abstractions.Comparison;
+using Application.Features.Comparison.Commands;
+using Application.Features.Comparison.DTOs;
 using Application.Features.Migration.Commands;
-using Application.Features.Migration.DTOs;
 using DataToolkit.Library;
-using Domain.Enums;
+using DataToolkit.Library.Connections.Context;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Persistence.Metadata.Services;
-using Persistence.Migration.Builders;
 using Persistence.Migration.Metadata;
 using Shared.Options;
 
-namespace Persistence.Migration.Services;
+namespace Persistence.Comparison.Services;
 
-public sealed class GenerateValidationService : IGenerateValidationService
+public sealed class CompareValidationService : ICompareValidationService
 {
     private readonly MetadataService _metadataService;
     private readonly MigrationOptions _options;
     private readonly IConfiguration _configuration;
+    private readonly IDatabaseContext _database;
 
-    public GenerateValidationService(
+    public CompareValidationService(
         MetadataService metadataService,
         IOptions<MigrationOptions> options,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IDatabaseContext database)
     {
         _metadataService = metadataService;
         _options = options.Value;
         _configuration = configuration;
+        _database = database;
     }
 
-    public async Task<MigrationResponseDto> GenerateValidationAsync(
-        GenerateValidationCommand command)
+    public async Task<CompareValidationResponseDto> CompareValidationAsync(
+        CompareValidationCommand command)
     {
-        string projectPath =
-            Path.Combine(
-                _options.Folders.Root,
-                command.ProjectName);
-
-        if (!Directory.Exists(projectPath))
-        {
-            throw new IOException(
-                $"El proyecto '{projectPath}' no existe.");
-        }
-
-        string outputFolder =
-            Path.Combine(
-                projectPath,
-                _options.Folders.MigrationTask);
-
-        if (!Directory.Exists(outputFolder))
-        {
-            throw new IOException(
-                $"El directorio de tareas de migración '{outputFolder}' no existe.");
-        }
-
-        string artifactPrefix =
-            command.ArtifactType == ArtifactType.WorkFile
-                ? "WF"
-                : "STG";
-
         string strSource =
             _configuration[$"Connections:{command.Source}:Database"]
             ?? throw new InvalidOperationException(
@@ -84,14 +60,11 @@ public sealed class GenerateValidationService : IGenerateValidationService
                 StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException(
-                "El artefacto de validación solo se puede generar entre conexiones del mismo servidor SQL.");
+                "La comparación de validación solo se puede ejecutar entre conexiones del mismo servidor SQL.");
         }
 
-        List<string> generatedFiles = [];
+        List<string> differences = [];
         List<string> warnings = [];
-
-        int generatedCount = 0;
-        int skippedCount = 0;
 
         List<TableMetadata> targetMetadata =
             await _metadataService.ExtractMetadataAsync(
@@ -119,55 +92,63 @@ public sealed class GenerateValidationService : IGenerateValidationService
             }
         }
 
+        using var target = _database["Target"].CreateNew();
+
         foreach (TableMetadata targetTable in targetMetadata)
         {
-            string tableKey =
-                $"{targetTable.Schema}.{targetTable.Name}";
+            string columnList =
+                string.Join(
+                    ", ",
+                    targetTable.Columns.Select(
+                        column => $"[{column.Name}]"));
 
-            string artifactFolder =
-                Path.Combine(
-                    outputFolder,
-                    tableKey);
+            string sql = $$"""
+            SELECT
+                CASE
+                    WHEN EXISTS
+                    (
+                        SELECT {{columnList}}
+                        FROM [{{strSource}}].[{{targetTable.Schema}}].[{{targetTable.Name}}]
 
-            Directory.CreateDirectory(
-                artifactFolder);
+                        EXCEPT
 
-            string fileName =
-                $"VAL_{targetTable.Schema}.{artifactPrefix}_{targetTable.Name}.sql";
+                        SELECT {{columnList}}
+                        FROM [{{strTarget}}].[{{targetTable.Schema}}].[{{targetTable.Name}}]
+                    )
+                    OR EXISTS
+                    (
+                        SELECT {{columnList}}
+                        FROM [{{strTarget}}].[{{targetTable.Schema}}].[{{targetTable.Name}}]
 
-            string filePath =
-                Path.Combine(
-                    artifactFolder,
-                    fileName);
+                        EXCEPT
 
-            if (File.Exists(filePath))
+                        SELECT {{columnList}}
+                        FROM [{{strSource}}].[{{targetTable.Schema}}].[{{targetTable.Name}}]
+                    )
+                    THEN 1
+                    ELSE 0
+                END AS HasDifferences;
+            """;
+
+            int hasDifferences =
+                (await target.Sql.FromSqlAsync<int>(sql))
+                .Single();
+
+            if (hasDifferences == 1)
             {
-                skippedCount++;
-
-                warnings.Add(
-                    $"El archivo '{fileName}' ya existe.");
-
-                continue;
+                differences.Add(
+                    $"{targetTable.Schema}.{targetTable.Name}");
             }
-
-            string sql =
-                ValidationBuilder.BuildValidationScript(
-                    strSource, strTarget,
-                    targetTable);
-
-            await File.WriteAllTextAsync(
-                filePath,
-                sql);
-
-            generatedCount++;
-            generatedFiles.Add(fileName);
         }
 
-        return new MigrationResponseDto
+        return new CompareValidationResponseDto
         {
-            GeneratedFiles = generatedCount,
-            SkippedTables = skippedCount,
-            Files = generatedFiles,
+            Source = strSource,
+            Target = strTarget,
+            Tables = targetMetadata.Count,
+            Validated = targetMetadata.Count,
+            WithDifferences = differences.Count,
+            Differences = differences,
             Warnings = warnings
         };
     }
