@@ -123,7 +123,7 @@ public sealed class ArtifactExecutor
             .Replace("WF_", "", StringComparison.OrdinalIgnoreCase)
             .Replace("STG_", "", StringComparison.OrdinalIgnoreCase);
 
-        List<string> tables = [table];
+        List<string> tables = [tableParts[1]]; //[table];
 
         bool isLocal =
             artifactType.Equals("LOCAL", StringComparison.OrdinalIgnoreCase);

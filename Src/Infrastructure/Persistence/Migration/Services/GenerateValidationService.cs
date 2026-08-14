@@ -93,6 +93,16 @@ public sealed class GenerateValidationService : IGenerateValidationService
         int generatedCount = 0;
         int skippedCount = 0;
 
+        List<TableMetadata> sourceMetadata =
+            await _metadataService.ExtractMetadataAsync(
+                command.Source,
+                command.Schema,
+                command.Tables);
+
+        sourceMetadata =
+            MetadataNormalizer.NormalizeColumns(
+                sourceMetadata);
+
         List<TableMetadata> targetMetadata =
             await _metadataService.ExtractMetadataAsync(
                 command.Target,
@@ -103,19 +113,35 @@ public sealed class GenerateValidationService : IGenerateValidationService
             MetadataNormalizer.NormalizeColumns(
                 targetMetadata);
 
-        HashSet<string> existingTables =
-            targetMetadata
-                .Select(t => t.Name)
-                .ToHashSet(
-                    StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, TableMetadata> sourceTables =
+            sourceMetadata.ToDictionary(
+                table => $"{table.Schema}.{table.Name}",
+                StringComparer.OrdinalIgnoreCase);
+
+        Dictionary<string, TableMetadata> targetTables =
+            targetMetadata.ToDictionary(
+                table => $"{table.Schema}.{table.Name}",
+                StringComparer.OrdinalIgnoreCase);
 
         foreach (string table in command.Tables)
         {
-            if (!existingTables.Contains(table))
+            string tableKey =
+                $"{command.Schema}.{table}";
+
+            if (!targetTables.ContainsKey(tableKey))
             {
                 warnings.Add(
-                    $"La tabla solicitada '{command.Schema}.{table}' " +
+                    $"La tabla solicitada '{tableKey}' " +
                     "no existe en la base de datos Target.");
+
+                continue;
+            }
+
+            if (!sourceTables.ContainsKey(tableKey))
+            {
+                warnings.Add(
+                    $"La tabla solicitada '{tableKey}' " +
+                    "no existe en la base de datos Source.");
             }
         }
 
@@ -124,13 +150,31 @@ public sealed class GenerateValidationService : IGenerateValidationService
             string tableKey =
                 $"{targetTable.Schema}.{targetTable.Name}";
 
+            if (!sourceTables.TryGetValue(
+                    tableKey,
+                    out TableMetadata? sourceTable))
+            {
+                warnings.Add(
+                    $"La tabla '{tableKey}' no existe en la base de datos Source.");
+
+                continue;
+            }
+
+            if (!MetadataMatches(
+                    sourceTable,
+                    targetTable))
+            {
+                warnings.Add(
+                    $"El metadata de la tabla '{tableKey}' " +
+                    "no coincide entre Source y Target.");
+
+                continue;
+            }
+
             string artifactFolder =
                 Path.Combine(
                     outputFolder,
                     tableKey);
-
-            Directory.CreateDirectory(
-                artifactFolder);
 
             string fileName =
                 $"VAL_{targetTable.Schema}.{artifactPrefix}_{targetTable.Name}.sql";
@@ -150,9 +194,13 @@ public sealed class GenerateValidationService : IGenerateValidationService
                 continue;
             }
 
+            Directory.CreateDirectory(
+                artifactFolder);
+
             string sql =
                 ValidationBuilder.BuildValidationScript(
-                    strSource, strTarget,
+                    strSource,
+                    strTarget,
                     targetTable);
 
             await File.WriteAllTextAsync(
@@ -170,5 +218,45 @@ public sealed class GenerateValidationService : IGenerateValidationService
             Files = generatedFiles,
             Warnings = warnings
         };
+    }
+
+    private static bool MetadataMatches(
+        TableMetadata sourceTable,
+        TableMetadata targetTable)
+    {
+        if (!sourceTable.Schema.Equals(
+                targetTable.Schema,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!sourceTable.Name.Equals(
+                targetTable.Name,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (sourceTable.Columns.Count !=
+            targetTable.Columns.Count)
+        {
+            return false;
+        }
+
+        HashSet<string> sourceColumns =
+            sourceTable.Columns
+                .Select(column => column.Name)
+                .ToHashSet(
+                    StringComparer.OrdinalIgnoreCase);
+
+        HashSet<string> targetColumns =
+            targetTable.Columns
+                .Select(column => column.Name)
+                .ToHashSet(
+                    StringComparer.OrdinalIgnoreCase);
+
+        return sourceColumns.SetEquals(
+            targetColumns);
     }
 }

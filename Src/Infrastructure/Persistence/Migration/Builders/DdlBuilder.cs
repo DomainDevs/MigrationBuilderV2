@@ -85,4 +85,5 @@ GO
             $"        [{targetColumn.Name}] {Common.BuildSqlType(targetColumn)} NULL{comma}{warning}";
     }
     #endregion
+
 }

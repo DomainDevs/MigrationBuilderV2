@@ -4,6 +4,7 @@ public class ColumnMetadata
 {
     public string Name { get; set; } = "";
     public string SqlType { get; set; } = "";
+    public string BaseSqlType { get; set; } = "";
     public string? MaxLength { get; set; }
     public string? Precision { get; set; }
     public string? Scale { get; set; }

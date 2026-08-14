@@ -9,28 +9,34 @@ internal static class Common
     #region BuildSqlType
     public static string BuildSqlType(ColumnMetadata column)
     {
-        var type = column.SqlType.ToLowerInvariant();
+        string sqlType =
+            string.IsNullOrWhiteSpace(column.BaseSqlType)
+                ? column.SqlType
+                : column.BaseSqlType;
+
+        string type =
+            sqlType.ToLowerInvariant();
 
         return type switch
         {
             "char" or "varchar" or "nchar" or "nvarchar"
             or "binary" or "varbinary"
                 => string.IsNullOrWhiteSpace(column.MaxLength)
-                    ? column.SqlType
-                    : $"{column.SqlType}({column.MaxLength})",
+                    ? sqlType
+                    : $"{sqlType}({column.MaxLength})",
 
             "decimal" or "numeric"
                 => string.IsNullOrWhiteSpace(column.Precision) ||
                    string.IsNullOrWhiteSpace(column.Scale)
-                    ? column.SqlType
-                    : $"{column.SqlType}({column.Precision},{column.Scale})",
+                    ? sqlType
+                    : $"{sqlType}({column.Precision},{column.Scale})",
 
             "datetime2" or "datetimeoffset" or "time"
                 => string.IsNullOrWhiteSpace(column.Scale)
-                    ? column.SqlType
-                    : $"{column.SqlType}({column.Scale})",
+                    ? sqlType
+                    : $"{sqlType}({column.Scale})",
 
-            _ => column.SqlType
+            _ => sqlType
         };
     }
     #endregion
@@ -43,57 +49,76 @@ internal static class Common
         if (source is null)
             return string.Empty;
 
-        string sourceType = BuildSqlType(source);
-        string targetType = BuildSqlType(target);
+        string sourceType =
+            BuildSqlType(source);
+
+        string targetType =
+            BuildSqlType(target);
+
+        string sourceBaseType =
+            string.IsNullOrWhiteSpace(source.BaseSqlType)
+                ? source.SqlType
+                : source.BaseSqlType;
+
+        string targetBaseType =
+            string.IsNullOrWhiteSpace(target.BaseSqlType)
+                ? target.SqlType
+                : target.BaseSqlType;
 
         // Tipo de dato
-        if (!source.SqlType.Equals(
-                target.SqlType,
+        if (!sourceBaseType.Equals(
+                targetBaseType,
                 StringComparison.OrdinalIgnoreCase))
         {
             return
-                $" /* WARNING: Source {sourceType} -> Target {targetType}. {MigrationWarning.DataTypeMismatch.GetMessage()} */";
+                $" /* WARNING: Source {sourceType} -> Target {targetType}. " +
+                $"{MigrationWarning.DataTypeMismatch.GetMessage()} */";
         }
 
         // Longitud
-        if (int.TryParse(source.MaxLength, out var sourceLength) &&
-            int.TryParse(target.MaxLength, out var targetLength) &&
+        if (int.TryParse(source.MaxLength, out int sourceLength) &&
+            int.TryParse(target.MaxLength, out int targetLength) &&
             sourceLength > targetLength)
         {
             return
-                $" /* WARNING: Source {sourceType} -> Target {targetType}. {MigrationWarning.LengthMismatch.GetMessage()} */";
+                $" /* WARNING: Source {sourceType} -> Target {targetType}. " +
+                $"{MigrationWarning.LengthMismatch.GetMessage()} */";
         }
 
         // Precisión
-        if (int.TryParse(source.Precision, out var sourcePrecision) &&
-            int.TryParse(target.Precision, out var targetPrecision) &&
+        if (int.TryParse(source.Precision, out int sourcePrecision) &&
+            int.TryParse(target.Precision, out int targetPrecision) &&
             sourcePrecision > targetPrecision)
         {
             return
-                $" /* WARNING: Source {sourceType} -> Target {targetType}. {MigrationWarning.PrecisionMismatch.GetMessage()} */";
+                $" /* WARNING: Source {sourceType} -> Target {targetType}. " +
+                $"{MigrationWarning.PrecisionMismatch.GetMessage()} */";
         }
 
         // Escala
-        if (int.TryParse(source.Scale, out var sourceScale) &&
-            int.TryParse(target.Scale, out var targetScale) &&
+        if (int.TryParse(source.Scale, out int sourceScale) &&
+            int.TryParse(target.Scale, out int targetScale) &&
             sourceScale > targetScale)
         {
             return
-                $" /* WARNING: Source {sourceType} -> Target {targetType}. {MigrationWarning.ScaleMismatch.GetMessage()} */";
+                $" /* WARNING: Source {sourceType} -> Target {targetType}. " +
+                $"{MigrationWarning.ScaleMismatch.GetMessage()} */";
         }
 
         // Nullable
         if (source.IsNullable && !target.IsNullable)
         {
             return
-                $" /* WARNING: Source NULL -> Target NOT NULL. {MigrationWarning.NullableMismatch.GetMessage()} */";
+                $" /* WARNING: Source NULL -> Target NOT NULL. " +
+                $"{MigrationWarning.NullableMismatch.GetMessage()} */";
         }
 
         // Identity
         if (target.IsIdentity)
         {
             return
-                $" /* WARNING: Columna : IDENTITY. {MigrationWarning.IdentityColumn.GetMessage()} */";
+                $" /* WARNING: Columna : IDENTITY. " +
+                $"{MigrationWarning.IdentityColumn.GetMessage()} */";
         }
 
         return string.Empty;

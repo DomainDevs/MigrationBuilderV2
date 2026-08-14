@@ -37,6 +37,7 @@ SELECT
     t.name AS TableName,
     c.name AS ColumnName,
     ty.name AS DataType,
+    bt.name AS BaseDataType,
 
     CASE
         WHEN c.max_length = -1 THEN 'MAX'
@@ -100,6 +101,10 @@ INNER JOIN sys.columns c
 
 INNER JOIN sys.types ty
     ON c.user_type_id = ty.user_type_id
+
+INNER JOIN sys.types bt
+    ON c.system_type_id = bt.system_type_id
+    AND bt.user_type_id = bt.system_type_id
 
 LEFT JOIN sys.default_constraints dc
     ON c.default_object_id = dc.object_id

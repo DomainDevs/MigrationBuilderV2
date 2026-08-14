@@ -56,6 +56,8 @@ public sealed class MetadataService
             {
                 Name = reader["ColumnName"]?.ToString() ?? string.Empty,
                 SqlType = reader["DataType"]?.ToString() ?? string.Empty,
+                BaseSqlType = reader["BaseDataType"]?.ToString() ?? string.Empty,
+
                 MaxLength = reader["MaxLength"]?.ToString(),
                 Precision = reader["Precision"]?.ToString(),
                 Scale = reader["Scale"]?.ToString(),
