@@ -124,7 +124,11 @@ internal static class BeginEndBuilder
         // Se elimina inmediatamente después de completar el LOAD.
         sql.AppendLine("-- Eliminar tabla de trabajo");
         sql.AppendLine(
-            $"DROP TABLE [{schema}].[{artifactPrefix}_{tableName}];");
+            $"IF OBJECT_ID(N'[{schema}].[{artifactPrefix}_{tableName}]', N'U') IS NOT NULL");
+        sql.AppendLine("BEGIN");
+        sql.AppendLine(
+            $"    DROP TABLE [{schema}].[{artifactPrefix}_{tableName}];");
+        sql.AppendLine("END");
         sql.AppendLine();
 
         sql.AppendLine("-- Deshabilitar Identity Insert");

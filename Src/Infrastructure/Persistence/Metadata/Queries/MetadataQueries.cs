@@ -159,6 +159,6 @@ ORDER BY
             sql,
             string.IsNullOrWhiteSpace(schema)
                 ? null
-                : new { Schema = schema });
+                : new { Schema = schema }, commandTimeout: 120);
     }
 }

@@ -29,15 +29,13 @@ public sealed class ArtifactExecutor
     private readonly ConnectionConfig _targetConfig;
 
     public ArtifactExecutor(
-        //SqlServerContext context,
         IDatabaseContext database,
         MetadataService metadataService,
         IConfiguration configuration,
         IBulkTransferEngine bulk)
     {
         _database = database;
-        //_source = context.Source;
-        //_target = context.Target;
+
         _configuration = configuration;
         _bulk = bulk;
         _metadataService = metadataService;
@@ -70,8 +68,6 @@ public sealed class ArtifactExecutor
 
         using var source = _database["Source"].CreateNew();
         using var target = _database["Target"].CreateNew();
-        //using var source = _source.CreateNew();
-        //using var target = _target.CreateNew();
 
         string extension = Path.GetExtension(artifactPath);
 
@@ -119,6 +115,8 @@ public sealed class ArtifactExecutor
 
         string schema = tableParts[0];
 
+        string sqlOrigin = "";
+
         string table = tableParts[1]
             .Replace("WF_", "", StringComparison.OrdinalIgnoreCase)
             .Replace("STG_", "", StringComparison.OrdinalIgnoreCase);
@@ -139,7 +137,7 @@ public sealed class ArtifactExecutor
         {
             if(!artifactType.Equals("BEGIN", StringComparison.OrdinalIgnoreCase) && !artifactType.Equals("END", StringComparison.OrdinalIgnoreCase))
             {
-                string sqlOrigin = $"""
+                sqlOrigin = $"""
                 SELECT COUNT(*)
                 FROM [{schema}].[{table}]
                 """;
@@ -150,6 +148,12 @@ public sealed class ArtifactExecutor
 
                 if (totalOrigin != 0)
                 {
+
+                    if (totalOrigin > 1000000) //Si supera el millon no puedo pasar por STG o por WF
+                    {
+                        tables = [table];
+                    }
+
                     await ValidateForeignKeysAsync(
                         target,
                         schema,
