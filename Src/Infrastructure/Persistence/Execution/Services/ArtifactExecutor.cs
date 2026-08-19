@@ -138,9 +138,16 @@ public sealed class ArtifactExecutor
             if(!artifactType.Equals("BEGIN", StringComparison.OrdinalIgnoreCase) && !artifactType.Equals("END", StringComparison.OrdinalIgnoreCase))
             {
                 sqlOrigin = $"""
-                SELECT COUNT(*)
-                FROM [{schema}].[{table}]
-                """;
+    IF OBJECT_ID(N'[{schema}].[{table}]', N'U') IS NOT NULL
+    BEGIN
+        SELECT COUNT(*)
+        FROM [{schema}].[{table}]
+    END
+    ELSE
+    BEGIN
+        SELECT 0
+    END
+    """;
 
                 long totalOrigin =
                     (await source.Sql.FromSqlAsync<long>(sqlOrigin))

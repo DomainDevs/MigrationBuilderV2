@@ -9,7 +9,7 @@ namespace Migration.Api.Controllers;
 
 [ApiController]
 [Route("api/auth")]
-//[ApiExplorerSettings(IgnoreApi = true)] //no se vea en swagger
+[ApiExplorerSettings(IgnoreApi = true)] //no se vea en swagger
 public class AuthController : ControllerBase
 {
     private readonly IAuthenticationService<ApplicationUser> _authentication;
