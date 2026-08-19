@@ -11,13 +11,16 @@ public sealed class ReportController : ControllerBase
 {
     private readonly CompareMetadataHandler _handler;
     private readonly CompareValidationHandler _validationHandler;
+    private readonly CompareRecordCountHandler _recordCountHandler;
 
     public ReportController(
-        CompareMetadataHandler handler, 
-        CompareValidationHandler validationHandler)
+        CompareMetadataHandler handler,
+        CompareValidationHandler validationHandler,
+        CompareRecordCountHandler recordCountHandler)
     {
         _handler = handler;
         _validationHandler = validationHandler;
+        _recordCountHandler = recordCountHandler;
     }
 
     [HttpPost("metadata")]
@@ -43,4 +46,17 @@ public sealed class ReportController : ControllerBase
 
         return Ok(result);
     }
+
+    [HttpPost("record-count")]
+    public async Task<IActionResult> CompareRecordCount(
+        [FromBody] RecordCountRequestDto dto)
+    {
+        var command = dto.ToCompareRecordCountCommand();
+
+        var result =
+            await _recordCountHandler.HandleAsync(command);
+
+        return Ok(result);
+    }
+
 }

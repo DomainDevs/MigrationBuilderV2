@@ -15,4 +15,8 @@ public static partial class MetadataMapper
     public static partial CompareValidationCommand ToCompareValidationCommand(
         this CompareValidationRequestDto dto);
 
+    // DTO → Command
+    public static partial CompareRecordCountCommand ToCompareRecordCountCommand(
+        this RecordCountRequestDto dto);
+
 }

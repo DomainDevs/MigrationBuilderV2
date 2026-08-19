@@ -3,7 +3,7 @@ using Application.Features.Comparison.DTOs;
 
 namespace Application.Abstractions.Comparison;
 
-public interface ICompareValidationService
+public interface IRecordCountService
 {
-    Task<CompareValidationResponseDto> CompareValidationAsync(CompareValidationCommand command);
+    Task<List<RecordCountResultDto>> CompareAsync(CompareRecordCountCommand command);
 }

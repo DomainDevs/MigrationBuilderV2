@@ -20,7 +20,16 @@ internal sealed class BootstrapProfiler
     {
         _stopwatch.Stop();
 
-        _times[_current] = _stopwatch.Elapsed;
+        TimeSpan elapsed = _stopwatch.Elapsed;
+
+        if (_times.TryGetValue(_current, out TimeSpan current))
+        {
+            _times[_current] = current + elapsed;
+        }
+        else
+        {
+            _times[_current] = elapsed;
+        }
     }
 
     public TimeSpan Get(BootstrapPhase phase)

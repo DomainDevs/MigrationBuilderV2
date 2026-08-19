@@ -10,18 +10,16 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 
 namespace DataToolkit.Authentication.Builders;
+
 public sealed class AuthenticationBuilder<TUser>
 {
     private readonly IServiceCollection _services;
-    private readonly string _secretKey;
     private readonly AuthenticationOptions<TUser> _options = new();
 
     internal AuthenticationBuilder(
-        IServiceCollection services,
-        string secretKey)
+        IServiceCollection services)
     {
         _services = services;
-        _secretKey = secretKey;
     }
 
     /// <summary>
@@ -54,7 +52,7 @@ public sealed class AuthenticationBuilder<TUser>
         UserMapping<TUser> mapping = _options.Build();
 
         SymmetricSecurityKey signingKey =
-            KeyFactory.Create(_secretKey);
+            KeyFactory.Create(options.SecretKey);
 
         _services
             .AddAuthentication(authentication =>
@@ -111,7 +109,7 @@ public sealed class AuthenticationBuilder<TUser>
         _services.AddScoped<IAuthenticationHandler<TUser>,
             JwtHandler<TUser>>();
 
-        _services.AddScoped<IAuthenticationService<TUser>, 
+        _services.AddScoped<IAuthenticationService<TUser>,
             AuthenticationService<TUser>>();
 
         return this;

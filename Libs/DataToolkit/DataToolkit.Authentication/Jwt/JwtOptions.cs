@@ -6,33 +6,43 @@ public sealed class JwtOptions
 
     public string Audience { get; set; } = "Default";
 
-    public int AccessTokenLifetimeMinutes { get; set; } = 60;
+    public int AccessTokenLifetimeMinutes { get; set; } = 15; // 15 min (estándar seguro)
 
-    public int RefreshTokenLifetimeHours { get; set; } = 1;
+    public int RefreshTokenLifetimeHours { get; set; } = 168; // 7 días (168 hrs)
+
+    public string SecretKey { get; set; } = string.Empty;
 
     internal void Validate()
     {
+        if (string.IsNullOrWhiteSpace(SecretKey))
+            throw new InvalidOperationException(
+                "El parámetro SecretKey es requerido.");
+
+        if (SecretKey.Length < 32)
+            throw new InvalidOperationException(
+                "La clave SecretKey debe tener al menos 32 caracteres (256 bits) para HMAC-SHA256.");
+
         if (string.IsNullOrWhiteSpace(Issuer))
             throw new InvalidOperationException(
-                "Issuer is required.");
+                "El parámetro Issuer es requerido.");
 
         if (string.IsNullOrWhiteSpace(Audience))
             throw new InvalidOperationException(
-                "Audience is required.");
+                "El parámetro Audience es requerido.");
 
         if (AccessTokenLifetimeMinutes <= 0)
             throw new InvalidOperationException(
-                "AccessTokenLifetimeMinutes must be greater than zero.");
+                "AccessTokenLifetimeMinutes debe ser mayor que cero.");
 
         if (RefreshTokenLifetimeHours <= 0)
             throw new InvalidOperationException(
-                "RefreshTokenLifetimeHours must be greater than zero.");
+                "RefreshTokenLifetimeHours debe ser mayor que cero.");
 
-        if (TimeSpan.FromDays(RefreshTokenLifetimeHours) <=
+        if (TimeSpan.FromHours(RefreshTokenLifetimeHours) <=
             TimeSpan.FromMinutes(AccessTokenLifetimeMinutes))
         {
             throw new InvalidOperationException(
-                "Refresh token lifetime must be greater than access token lifetime.");
+                "La duración del token de actualización debe ser mayor que la duración del token de acceso.");
         }
     }
 }

@@ -1,9 +1,12 @@
 {
   "Jwt": {
-    "Secret": "TuClaveSecretaSuperSeguraDeAlMenos32Caracteres",
+    "SecretKey": "TuClaveSecretaSuperSeguraDeAlMenos32Caracteres",
     "Issuer": "MiEmpresa.AuthServer",
     "Audience": "Migration.Api",
     "AccessTokenLifetimeMinutes": 15,
     "RefreshTokenLifetimeHours": 48
+  },
+  "Encryption": {
+    "SecretKey": "K7vP9xQ2mL8rT4zN6wY3cH5jF1sD8uB0"
   }
 }

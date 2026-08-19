@@ -133,6 +133,7 @@ internal static class TypeScanner
         try
         {
             return assembly.GetTypes();
+            //return assembly.GetExportedTypes(); //Solo publics, las internal puede sumarse
         }
         catch (ReflectionTypeLoadException ex)
         {
@@ -169,7 +170,6 @@ internal static class TypeScanner
     private static bool IsCandidate(Type type)
     {
         return
-            type.IsPublic &&
             type.IsClass &&
             !type.IsAbstract &&
             !type.IsNested &&

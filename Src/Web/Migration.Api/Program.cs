@@ -49,7 +49,7 @@ try
     );
 
     // 1. Registras el servicio indicando cómo leer tu entidad de usuario
-    builder.Services.AddDataToolkitAuthentication<ApplicationUser>(builder.Configuration["Jwt:Secret"]!)
+    builder.Services.AddDataToolkitAuthentication<ApplicationUser>()
     .MapUser(user =>
     {
         user.UserId = u => u.Id;
@@ -60,19 +60,17 @@ try
     })
     .AddJwt(jwt =>
     {
-        jwt.Issuer =
-            builder.Configuration["Jwt:Issuer"]!;
-
-        jwt.Audience =
-            builder.Configuration["Jwt:Audience"]!;
+        jwt.SecretKey = builder.Configuration["Jwt:SecretKey"]!;
+        
+        jwt.Issuer = builder.Configuration["Jwt:Issuer"]!;
+        
+        jwt.Audience = builder.Configuration["Jwt:Audience"]!;
 
         jwt.AccessTokenLifetimeMinutes =
-            int.Parse(
-                builder.Configuration["Jwt:AccessTokenLifetimeMinutes"]!);
+            int.Parse(builder.Configuration["Jwt:AccessTokenLifetimeMinutes"]!);
 
         jwt.RefreshTokenLifetimeHours =
-            int.Parse(
-                builder.Configuration["Jwt:RefreshTokenLifetimeHours"]!);
+            int.Parse(builder.Configuration["Jwt:RefreshTokenLifetimeHours"]!);
     });
 
     builder.Services.AddControllers();
