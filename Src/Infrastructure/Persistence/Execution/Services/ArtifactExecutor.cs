@@ -7,7 +7,6 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Persistence.Configuration;
-using Persistence.Connect.Context;
 using Persistence.Execution.ETL;
 using Persistence.Execution.Validation;
 using Persistence.Metadata.Services;
@@ -318,7 +317,7 @@ public sealed class ArtifactExecutor
             }
 
             string sql = $"""
-            SELECT COUNT(*)
+            SELECT TOP (1) 1
             FROM [{schema}].[{foreignKey.ForeignTable}]
             """;
 
