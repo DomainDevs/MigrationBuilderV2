@@ -1,0 +1,148 @@
+:root {
+    /* ==========================================================================
+       1. Base Palette & Tokens (Primitive)
+       ========================================================================== */
+    /* Primary (Verde Menta / Esmeralda de la imagen) */
+    --color-primary: #2ECC9B;
+    --color-primary-rgb: 46, 204, 155;
+    --color-primary-dark: #25A27B;
+    --color-primary-light: #A3ECD7;
+    --color-primary-lighter: #EAF9F5;
+
+    /* Accent */
+    --color-accent: #2ECC9B;
+    --color-accent-rgb: 46, 204, 155;
+    --color-accent-light: #EAF9F5;
+    --color-accent-hover: #25A27B;
+
+    /* Neutrals / Grays Scale */
+    --gray-50: #FAFAFA;
+    --gray-100: #F4F5F7;
+    --gray-150: #E6E8EC;
+    --gray-200: #D0D4DC;
+    --gray-300: #A0A5B1;
+    --gray-400: #6B7280;
+    --gray-500: #4B5563;
+    --gray-600: #374151;
+    --gray-700: #292A2D; /* Sidebar charcoal/antracita */
+    --gray-800: #202124;
+    --gray-900: #17181A;
+
+    /* Semantic Status */
+    --color-success: #2ECC9B;
+    --color-warning: #FF9F43;
+    --color-danger: #FF5B5C;  
+    --color-info: #2ECC9B;
+
+    /* Status Badges Backgrounds & Text */
+    --status-success-bg: #EAF9F5;
+    --status-success-text: #208B69;
+    --status-warning-bg: #FFF3E8;
+    --status-warning-text: #D97000;
+    --status-danger-bg: #FFEAEA;
+    --status-danger-text: #D63031;
+    --status-info-bg: #EAF9F5;
+    --status-info-text: #208B69;
+
+    /* ==========================================================================
+       2. Semantic Application Tokens
+       ========================================================================== */
+    /* Backgrounds & Surfaces */
+    --color-bg: #F4F5F7;        /* Fondo gris muy claro del dashboard */
+    --color-surface: #FFFFFF;
+    --color-surface-alt: #FAFAFA;
+
+    /* Borders */
+    --color-border: #E6E8EC;
+    --color-border-hover: var(--color-primary);
+
+    /* Typography */
+    --color-text: #292A2D;
+    --color-text-muted: #6B7280;
+    --color-text-light: #A0A5B1;
+
+    /* ==========================================================================
+       3. Component Specific Tokens
+       ========================================================================== */
+    /* Sidebar (Antracita muy oscuro de la imagen) */
+    --sidebar-bg: #292A2D;            
+    --sidebar-border: #292A2D;        
+    --sidebar-text: #A0A5B1;          
+    --sidebar-text-muted: #6B7280;
+    --sidebar-text-hover: #FFFFFF;
+    --sidebar-text-active: #FFFFFF;
+    --sidebar-hover: rgba(255, 255, 255, 0.05); 
+    --sidebar-active: #202124;       
+    --sidebar-icon: #A0A5B1;
+    --sidebar-icon-hover: #FFFFFF;
+    --sidebar-icon-active: #2ECC9B;
+    
+    /* Indicador */
+    --sidebar-indicator: #2ECC9B;     
+    --sidebar-indicator-rgb: 46, 204, 155;
+
+    /* Topbar */
+    --topbar-bg: var(--color-surface);
+    --topbar-border: var(--color-border);
+    --topbar-text: var(--color-text);
+    --topbar-text-muted: var(--color-text-muted);
+    --topbar-hover: var(--gray-50);
+
+    /* Cards & Panels */
+    --card-bg: var(--color-surface);
+    --card-border: var(--color-border);
+    --card-hover-border: rgba(var(--color-primary-rgb), 0.3);
+
+    /* Form Inputs */
+    --input-bg: var(--color-surface);
+    --input-border: #D0D4DC;
+    --input-border-focus: var(--color-primary);
+    --input-placeholder: #A0A5B1;
+
+    /* Tables */
+    --table-header-bg: #FFFFFF;
+    --table-row-hover: #FAFAFA;
+    --table-border: var(--color-border);
+
+    /* Buttons */
+    --button-primary-bg: #2ECC9B;     /* Botón principal verde menta */
+    --button-primary-hover: #25A27B;
+    --button-primary-text: #FFFFFF;
+
+    --button-secondary-bg: var(--color-surface);
+    --button-secondary-hover: var(--gray-50);
+    --button-secondary-text: var(--color-text);
+    --button-secondary-border: var(--color-border);
+
+    /* KPIs */
+    --kpi-blue: var(--color-primary);
+    --kpi-green: var(--color-success);
+    --kpi-orange: var(--color-warning);
+    --kpi-track: #E6E8EC;
+
+    /* Statusbar (Footer) */
+    --statusbar-bg: var(--color-surface);
+    --statusbar-border: var(--color-border);
+    --statusbar-text: var(--color-text-muted);
+    --statusbar-text-muted: var(--color-text-light);
+    --status-indicator: var(--color-success);
+
+    /* ==========================================================================
+       4. Layout, Radii & Elevations
+       ========================================================================== */
+    --radius-sm: 6px;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --radius-full: 9999px;
+
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+    --shadow: 0 4px 16px rgba(0, 0, 0, 0.06);     
+    --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+    --sidebar-width: 270px;
+    --header-height: 68px;
+    --footer-height: 40px;
+    --content-max-width: 1320px;
+
+    --transition: 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}

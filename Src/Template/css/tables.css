@@ -1,0 +1,381 @@
+/* 1. Panel Contenedor */
+.panel-pipeline {
+    display: flex;
+    flex-direction: column;
+    height: 98%;
+    min-height: 0;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+/* 2. Toolbar Fija y Compacta */
+.pipeline-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    height: 48px;
+    min-height: 48px;
+    flex-shrink: 0;
+    background-color: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    box-sizing: border-box;
+}
+
+.toolbar-section {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.toolbar-title {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--color-text);
+    white-space: nowrap;
+}
+
+.pipeline-counter {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    padding-left: 8px;
+    border-left: 1px solid var(--color-border);
+}
+
+/* Botones Ultra-compactos */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid transparent;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.btn [data-lucide], .btn svg {
+    width: 13px;
+    height: 13px;
+}
+
+.btn-success { 
+    background-color: var(--color-primary); 
+    color: var(--color-surface); 
+}
+.btn-success:hover { 
+    background-color: var(--color-primary-dark); 
+}
+
+.btn-danger { 
+    background-color: var(--status-danger-bg); 
+    color: var(--status-danger-text); 
+    border-color: var(--status-danger-text);
+}
+.btn-danger:hover { 
+    opacity: 0.9; 
+}
+
+/* Paginador Compacto */
+.pagination {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    background-color: var(--color-surface);
+    padding: 2px 4px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    box-sizing: border-box;
+}
+
+.page-indicator {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    padding: 0 6px;
+    white-space: nowrap;
+}
+
+.icon-button-sm {
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 3px;
+    background: transparent;
+    color: var(--color-text);
+    cursor: pointer;
+}
+
+.icon-button-sm:hover:not(:disabled) { 
+    background-color: var(--color-border); 
+}
+.icon-button-sm:disabled { 
+    opacity: 0.35; 
+    cursor: not-allowed; 
+}
+.icon-button-sm [data-lucide], .icon-button-sm svg { 
+    width: 13px; 
+    height: 13px; 
+}
+
+/* 3. Área de Scroll Flexible */
+.pipeline-scroll-area {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 14px 16px;
+    background-color: var(--color-surface);
+    box-sizing: border-box;
+}
+
+
+/* ==========================================================================
+   4. Estructura de Nodos y Conectores Verticales (Modificado)
+   ========================================================================== */
+.node-flow-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+
+/* Conector vertical sólido y elegante con flecha hacia abajo */
+.flow-connector {
+    position: relative;
+    width: 2px;
+    height: 24px;
+    min-height: 24px;
+    flex-shrink: 0;
+    background-color: var(--color-border);
+    margin: 2px 0;
+    box-sizing: border-box;
+    transition: background-color var(--transition);
+}
+
+/* Flecha hacia abajo limpia en la punta inferior */
+.flow-connector::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid var(--color-border);
+    transition: border-color var(--transition);
+}
+
+/* Estado Éxito/Completado (Naranja según tu última preferencia) */
+.flow-connector.active {
+    background-color: var(--color-success);
+}
+.flow-connector.active::after {
+    border-top-color: var(--color-success);
+}
+
+/* Estado En Ejecución / Activo (Coral) */
+.flow-connector.running {
+    background-color: var(--color-primary);
+}
+.flow-connector.running::after {
+    border-top-color: var(--color-primary);
+}
+
+/* Nodos */
+.flow-node {
+    width: 100%;
+    max-width: 100%;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    box-shadow: var(--shadow-sm);
+    box-sizing: border-box;
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.flow-node.node-running {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-accent-light);
+}
+
+.flow-node.node-pending {
+    border-style: dashed;
+    background-color: var(--color-surface-alt);
+}
+
+.node-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.node-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.node-icon {
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    box-sizing: border-box;
+}
+
+.node-icon.completed { 
+    background-color: var(--status-success-bg); 
+    color: var(--status-success-text); 
+}
+.node-icon.running { 
+    background-color: var(--status-info-bg); 
+    color: var(--status-info-text); 
+}
+.node-icon.failed { 
+    background-color: var(--status-danger-bg); 
+    color: var(--status-danger-text); 
+}
+.node-icon.pending { 
+    background-color: var(--gray-150); 
+    color: var(--color-text-muted); 
+}
+
+.node-icon [data-lucide], .node-icon svg { width: 14px; height: 14px; }
+
+.node-name {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.node-sub {
+    font-size: 0.6875rem;
+    color: var(--color-text-muted);
+    margin-left: 6px;
+}
+
+
+/* ==========================================================================
+   5. Cajitas de Pasos y Conectores Horizontales (Modificado)
+   ========================================================================== */
+.node-pipeline-steps {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: var(--gray-50);
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    box-sizing: border-box;
+}
+
+.step-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-width: 54px;
+    padding: 5px 8px;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    box-sizing: border-box;
+    transition: all var(--transition);
+}
+
+.step-card-icon { 
+    width: 12px; 
+    height: 12px; 
+}
+
+.step-card-name { 
+    font-size: 0.625rem; 
+    font-weight: 700; 
+    font-family: monospace; 
+}
+
+/* Estados de los pasos */
+.step-card.step-success { 
+    background-color: var(--status-success-bg); 
+    border-color: rgba(240, 174, 69, 0.4); 
+    color: var(--status-success-text); 
+}
+
+.step-card.step-active { 
+    background-color: var(--color-primary); 
+    border-color: var(--color-primary-dark); 
+    color: #FFFFFF; 
+}
+
+.step-card.step-error { 
+    background-color: var(--status-danger-bg); 
+    border-color: rgba(242, 85, 90, 0.4); 
+    color: var(--status-danger-text); 
+}
+
+.step-card.step-pending { 
+    background-color: var(--color-surface); 
+    border-color: var(--color-border); 
+    color: var(--color-text-light); 
+}
+
+.step-card.step-na { 
+    background-color: transparent; 
+    border: 1px dashed var(--gray-300); 
+    color: var(--color-text-light); 
+    opacity: 0.6; 
+}
+
+/* Línea conectora entre pasos (Horizontal) */
+.step-connector-line {
+    position: relative;
+    flex: 1;
+    height: 2px;
+    background-color: var(--color-border);
+    margin: 0 6px;
+    box-sizing: border-box;
+    transition: background-color var(--transition);
+}
+
+/* Micro-flecha direccional en el flujo horizontal */
+.step-connector-line::after {
+    content: '';
+    position: absolute;
+    right: -2px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-top: 3px solid transparent;
+    border-bottom: 3px solid transparent;
+    border-left: 4px solid var(--color-border);
+    transition: border-color var(--transition);
+}
+
+.step-connector-line.active { 
+    background-color: var(--color-primary); 
+}
+
+.step-connector-line.active::after {
+    border-left-color: var(--color-primary);
+}
+
+.spinner { animation: spin 1.2s linear infinite; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

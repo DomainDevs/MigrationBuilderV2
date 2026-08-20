@@ -1,0 +1,16 @@
+{
+  "success": true,
+  "message": "",
+  "data": {
+    "scripts": [
+      {
+        "name": "BEGIN_dbo.Customer.sql",
+        "type": "BEGIN"
+      },
+      {
+        "name": "END_dbo.Customer.sql",
+        "type": "END"
+      }
+    ]
+  }
+}

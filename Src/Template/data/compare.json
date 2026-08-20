@@ -1,0 +1,14 @@
+{
+  "success": true,
+  "message": "",
+  "data": {
+    "source": "Northwind",
+    "target": "ERP",
+    "summary": {
+      "tablesOnlyInSource": 8,
+      "tablesOnlyInTarget": 3,
+      "tablesDifferent": 21,
+      "tablesEqual": 154
+    }
+  }
+}

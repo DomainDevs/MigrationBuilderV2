@@ -1,0 +1,62 @@
+{
+  "totalPackages": 500,
+  "page": 1,
+  "pageSize": 4,
+  "totalPages": 30,
+  "pipelineStatus": "running",
+  "activePackageId": 2,
+  "packages": [
+    {
+      "id": 1,
+      "name": "Customers",
+      "status": "completed",
+      "duration": "00:12",
+      "steps": [
+        { "name": "BEGIN", "status": "success", "icon": "check" },
+        { "name": "DDL", "status": "success", "icon": "check" },
+        { "name": "SQL", "status": "success", "icon": "check" },
+        { "name": "LOAD", "status": "success", "icon": "check" },
+        { "name": "END", "status": "success", "icon": "check" }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Invoices",
+      "status": "running",
+      "duration": "Executing SQL (00:07)",
+      "steps": [
+        { "name": "BEGIN", "status": "success", "icon": "check" },
+        { "name": "DDL", "status": "success", "icon": "check" },
+        { "name": "SQL", "status": "active", "icon": "loader-2" },
+        { "name": "LOAD", "status": "pending", "icon": "upload-cloud" },
+        { "name": "END", "status": "pending", "icon": "flag" }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Products",
+      "status": "pending",
+      "duration": "In queue",
+      "steps": [
+        { "name": "BEGIN", "status": "pending", "icon": "play" },
+        { "name": "DDL", "status": "pending", "icon": "database" },
+        { "name": "SQL", "status": "na", "icon": "minus-circle" },
+        { "name": "LOAD", "status": "pending", "icon": "upload-cloud" },
+        { "name": "END", "status": "pending", "icon": "flag" }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Claims_History",
+      "status": "pending",
+      "duration": "In queue",
+      "steps": [
+        { "name": "BEGIN", "status": "pending", "icon": "play" },
+        { "name": "DDL", "status": "pending", "icon": "database" },
+        { "name": "SQL", "status": "pending", "icon": "file-code-2" },
+        { "name": "LOAD", "status": "pending", "icon": "upload-cloud" },
+        { "name": "END", "status": "pending", "icon": "flag" }
+      ]
+    }
+  ]
+}

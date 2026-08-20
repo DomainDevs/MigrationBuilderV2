@@ -1,0 +1,22 @@
+{
+  "success": true,
+  "message": "",
+  "data": {
+    "folders": [
+      "Artifacts",
+      "Packages",
+      "Scripts",
+      "Logs"
+    ],
+    "files": [
+      {
+        "name": "MigrationPlan.json",
+        "type": "json"
+      },
+      {
+        "name": "BEGIN_dbo.Customer.sql",
+        "type": "sql"
+      }
+    ]
+  }
+}

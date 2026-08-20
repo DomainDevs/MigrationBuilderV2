@@ -1,0 +1,10 @@
+{
+  "success": true,
+  "message": "",
+  "data": {
+    "theme": "light",
+    "language": "en",
+    "diagnostics": true,
+    "verboseLogs": false
+  }
+}

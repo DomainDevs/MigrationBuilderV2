@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DataToolkit Dashboard</title>
+
+<link id="theme" rel="stylesheet" href="css/theme-light.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/sidebar.css">
+<link rel="stylesheet" href="css/topbar.css">
+<link rel="stylesheet" href="css/cards.css">
+<link rel="stylesheet" href="css/kpis.css">
+<link rel="stylesheet" href="css/dashboard.css">
+<link rel="stylesheet" href="css/buttons.css">
+<link rel="stylesheet" href="css/tables.css">
+<link rel="stylesheet" href="css/forms.css">
+<link rel="stylesheet" href="css/responsive.css">
+<link rel="stylesheet" href="css/footer.css">
+
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+<div>
+    <div class="brand">
+        <div class="brand-icon">
+            <i data-lucide="package"></i>
+        </div>
+        <div class="brand-details">
+            <span class="brand-title">Sistran Migration Engine</span>
+            <span class="brand-version">v1.0.2</span>
+        </div>
+    </div>
+
+    <nav class="menu">
+        <a class="active" href="#">
+            <i data-lucide="layout-dashboard"></i>
+            <span>Dashboard</span>
+        </a>
+        <a href="#">
+            <i data-lucide="database"></i>
+            <span>Migrations</span>
+        </a>
+        <a href="#">
+            <i data-lucide="package"></i>
+            <span>Packages</span>
+        </a>
+        <a href="#">
+            <i data-lucide="git-compare"></i>
+            <span>Compare</span>
+        </a>
+        <a href="#">
+            <i data-lucide="folder-search"></i>
+            <span>Explorer</span>
+        </a>
+        <a href="#">
+            <i data-lucide="file-code-2"></i>
+            <span>Scripts</span>
+        </a>
+        <a href="#">
+            <i data-lucide="history"></i>
+            <span>History</span>
+        </a>
+        <a href="#">
+            <i data-lucide="settings"></i>
+            <span>Settings</span>
+        </a>
+        <a href="#">
+            <i data-lucide="workflow"></i>
+            <span>WorkFlow</span>
+        </a>
+    </nav>
+</div>
+<div class="theme-switch">
+    <button id="themeButton" class="theme-button" title="Cambiar tema">
+        <i data-lucide="palette"></i>
+    </button>
+</div>
+</aside>
+
+<div class="main">
+
+<header class="topbar">
+    <div class="page-title">
+        <span>[Dashboard]</span>
+    </div>
+
+    <div class="topbar-actions">
+        <button class="icon-button" id="menuButton">
+            <i data-lucide="panel-left"></i>
+        </button>
+        <button class="icon-button">
+            <i data-lucide="bell"></i>
+        </button>
+        <button class="icon-button">
+            <i data-lucide="settings"></i>
+        </button>
+        <div class="avatar">FP</div>
+    </div>
+</header>
+
+<main class="content dashboard">
+
+<section class="kpi-grid">
+    <div class="card kpi">
+        <div class="kpi-circle kpi-blue" style="--progress:82">
+            <span class="kpi-circle-value">82%</span>
+        </div>
+        <div class="kpi-content">
+            <span class="kpi-label">Proyects</span>
+            <h3>3</h3>
+            <span class="kpi-meta">
+                <span class="kpi-trend up">1</span> in progress
+            </span>
+        </div>
+    </div>
+
+    <div class="card kpi">
+        <div class="kpi-circle kpi-purple" style="--progress:64">
+            <span class="kpi-circle-value">2%</span>
+        </div>
+        <div class="kpi-content">
+            <span class="kpi-label">Packages</span>
+            <h3>500</h3>
+            <span class="kpi-meta">
+                <span class="kpi-trend">488</span> pending
+            </span>
+        </div>
+    </div>
+
+    <div class="card kpi">
+        <div class="kpi-circle kpi-green" style="--progress:99.8">
+            <span class="kpi-circle-value">99.8%</span>
+        </div>
+        <div class="kpi-content">
+            <span class="kpi-label">Success</span>
+            <h3>99.8%</h3>
+            <span class="kpi-meta">
+                <span class="kpi-trend up">+0.4%</span> vs last run
+            </span>
+        </div>
+    </div>
+
+    <div class="card kpi">
+        <div class="kpi-circle kpi-orange" style="--progress:76">
+            <span class="kpi-circle-value">76%</span>
+        </div>
+        <div class="kpi-content">
+            <span class="kpi-label">Tables</span>
+            <h3>124</h3>
+            <span class="kpi-meta">
+                <span class="kpi-trend">24</span> modified
+            </span>
+        </div>
+    </div>
+</section>
+
+<section class="panel panel-pipeline">
+    
+    <!-- TOOLBAR -->
+    <div class="pipeline-toolbar">
+        <div class="toolbar-section">
+            <h3 class="toolbar-title">Pipeline Execution</h3>
+            <span class="pipeline-counter">1-10 of <strong>5,000</strong> packages</span>
+        </div>
+
+        <div class="toolbar-section">
+            <button class="btn btn-success" id="btnRunPipeline">
+                <i data-lucide="play"></i>
+                <span>Run</span>
+            </button>
+            <button class="btn btn-danger" id="btnStopPipeline">
+                <i data-lucide="square"></i>
+                <span>Stop</span>
+            </button>
+        </div>
+
+        <div class="toolbar-section">
+            <div class="pagination">
+                <!-- Anterior -->
+                <button class="icon-button-sm" disabled title="Página anterior">
+                    <i data-lucide="chevron-left"></i>
+                </button>
+                
+                <!-- Números de página -->
+                <div class="page-numbers">
+                    <button class="page-num active">1</button>
+                    <button class="page-num">2</button>
+                    <button class="page-num">3</button>
+                    <button class="page-num">4</button>
+                    <span class="page-dots">...</span>
+                    <button class="page-num">500</button>
+                </div>
+
+                <!-- Siguiente -->
+                <button class="icon-button-sm" title="Página siguiente">
+                    <i data-lucide="chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AREA DE SCROLL -->
+    <div class="pipeline-scroll-area">
+        <div class="node-flow-container">
+            <!-- Se cargará dinámicamente desde packages.json mediante js/pipeline.js -->
+        </div>
+    </div>
+
+
+</section>
+
+</main>
+
+<footer class="statusbar">
+    <span id="statusText">Ready</span>
+    <div class="statusbar-right">
+        <span>Active Server</span>
+        <span>Connected</span>
+    </div>
+</footer>
+
+</div>
+</div>
+
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="js/sidebar.js"></script>
+<script src="js/theme.js"></script>
+<script src="js/app.js"></script>
+<script src="js/pipeline.js"></script>
+
+<!-- Se agrega type="module" para soportar top-level await correctamente -->
+<script type="module">
+    try {
+        const data = await DashboardService.getDashboard();
+        if (typeof renderKpis === 'function') renderKpis(data.kpis);
+        if (typeof renderRecentActivity === 'function') renderRecentActivity(data.recentActivity);
+    } catch (e) {
+        console.warn("DashboardService no está inicializado o cargado aún.", e);
+    }
+</script>
+
+<script>
+    lucide.createIcons();
+</script>
+</body>
+</html>

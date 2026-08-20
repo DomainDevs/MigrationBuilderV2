@@ -1,0 +1,148 @@
+/* Container Principal */
+.topbar {
+    height: var(--header-height, 68px);
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    background-color: var(--topbar-bg);
+    border-bottom: 1px solid var(--topbar-border);
+    color: var(--topbar-text);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(8px);
+    transition: background-color var(--transition, 0.18s ease), 
+                border-color var(--transition, 0.18s ease);
+}
+
+/* Tipografía y Título (.page-title) */
+.topbar h2,
+.topbar .page-title {
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--topbar-text);
+    font-size: 0.9375rem; /* 15px */
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+}
+
+.topbar .title-main {
+    color: var(--topbar-text);
+}
+
+.topbar .title-sub {
+    color: var(--topbar-text-muted);
+    font-weight: 500;
+    font-size: 0.875rem;
+}
+
+/* Indicador de Estado Neon/Accent */
+.topbar h2::after,
+.topbar .page-title::after {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin-left: 2px;
+    border-radius: 50%;
+    background-color: var(--color-accent);
+    box-shadow: 0 0 8px var(--color-accent);
+    flex-shrink: 0;
+}
+
+/* Acciones */
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Botones de Ícono */
+.icon-button {
+    width: 38px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid transparent;
+    border-radius: var(--radius, 8px);
+    background-color: transparent;
+    color: var(--topbar-text-muted);
+    cursor: pointer;
+    user-select: none;
+    transition: background-color var(--transition, 0.18s ease),
+                border-color var(--transition, 0.18s ease),
+                color var(--transition, 0.18s ease),
+                transform 0.1s ease,
+                box-shadow var(--transition, 0.18s ease);
+}
+
+.icon-button:hover {
+    background-color: var(--topbar-hover);
+    border-color: var(--topbar-border);
+    color: var(--color-primary);
+    transform: translateY(-1px);
+}
+
+.icon-button:active {
+    transform: translateY(0);
+}
+
+.icon-button:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+.icon-button svg,
+.icon-button [data-lucide] {
+    width: 18px;
+    height: 18px;
+    stroke-width: 2;
+    flex-shrink: 0;
+}
+
+/* Avatar de Usuario */
+.avatar {
+    width: 38px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 6px;
+    border: 1px solid var(--color-primary-light, var(--color-border));
+    border-radius: 50%;
+    background-color: var(--color-primary-lighter, var(--color-surface-alt));
+    color: var(--color-primary);
+    font-size: 0.75rem; /* 12px */
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color var(--transition, 0.18s ease),
+                border-color var(--transition, 0.18s ease),
+                color var(--transition, 0.18s ease),
+                transform 0.1s ease,
+                box-shadow var(--transition, 0.18s ease);
+}
+
+.avatar:hover {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #FFFFFF;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 102, 255, 0.25);
+}
+
+.avatar:active {
+    transform: translateY(0);
+}
+
+.avatar:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}

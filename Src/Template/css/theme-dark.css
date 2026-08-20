@@ -1,0 +1,145 @@
+:root {
+    /* ==========================================================================
+       1. Base Palette & Tokens (Primitives)
+       ========================================================================== */
+    /* Primary (Ocean Blue) */
+    --color-primary: #0e9ba0;
+    --color-primary-rgb: 22, 136, 232;
+    --color-primary-dark: #0fabc7;
+    --color-primary-light: #45A9F4;
+    --color-primary-lighter: #E5F4FF;
+
+    /* Accent (Mint / Emerald Neon) */
+    --color-accent: #38E6A5;
+    --color-accent-rgb: 56, 230, 165;
+    --color-accent-light: #6FF2BE;
+    --color-accent-hover: #20D895;
+
+    /* Slate / Neutral Scale */
+    --slate-50: #F8FAFC;
+    --slate-100: #F1F4F8;
+    --slate-150: #E5EAF0;
+    --slate-200: #D5DEE8;
+    --slate-300: #B9C6D4;
+    --slate-400: #98A7B7;
+    --slate-500: #68788C;
+    --slate-600: #465668;
+    --slate-700: #25364A;
+    --slate-800: #0F304D;
+    --slate-900: #071A32;
+
+    /* Status Base Colors */
+    --color-success: #20D895;
+    --color-warning: #F4C44E;
+    --color-danger: #EA6874;
+    --color-info: var(--color-primary);
+
+    /* Status Badges Backgrounds & Text (Contrast Preserved) */
+    --status-success-bg: #E3FCEF;
+    --status-success-text: #0E6245;
+    --status-warning-bg: #FFF8E6;
+    --status-warning-text: #8A6100;
+    --status-danger-bg: #FEECEE;
+    --status-danger-text: #921E28;
+    --status-info-bg: var(--color-primary-lighter);
+    --status-info-text: var(--color-primary-dark);
+
+    /* ==========================================================================
+       2. Semantic Application Tokens
+       ========================================================================== */
+    /* Backgrounds & Surfaces */
+    --color-bg: var(--slate-100);
+    --color-surface: #FFFFFF;
+    --color-surface-alt: var(--slate-50);
+
+    /* Borders */
+    --color-border: var(--slate-150);
+    --color-border-hover: var(--slate-200);
+
+    /* Typography */
+    --color-text: var(--slate-700);
+    --color-text-muted: var(--slate-500);
+    --color-text-light: var(--slate-400);
+
+    /* ==========================================================================
+       3. Component Specific Tokens
+       ========================================================================== */
+    /* Dark Sidebar System */
+    --sidebar-bg: var(--slate-900);
+    --sidebar-border: rgba(255, 255, 255, 0.08);
+    --sidebar-text: #91A7BA;
+    --sidebar-text-muted: #647F96;
+    --sidebar-text-hover: #DCEEFF;
+    --sidebar-text-active: #FFFFFF;
+    --sidebar-hover: #0C2947;
+    --sidebar-active: var(--slate-800);
+    --sidebar-icon: #7891A7;
+    --sidebar-icon-hover: var(--color-primary-light);
+    --sidebar-icon-active: var(--color-accent);
+    --sidebar-indicator: var(--color-accent);
+
+    /* Topbar */
+    --topbar-bg: var(--color-surface);
+    --topbar-border: var(--slate-150);
+    --topbar-text: var(--slate-700);
+    --topbar-text-muted: var(--slate-500);
+    --topbar-hover: #F3F7FB;
+
+    /* Cards & Panels */
+    --card-bg: var(--color-surface);
+    --card-border: var(--slate-150);
+    --card-hover-border: rgba(var(--color-primary-rgb), 0.3);
+
+    /* Form Inputs */
+    --input-bg: var(--color-surface);
+    --input-border: var(--slate-200);
+    --input-border-focus: var(--color-primary);
+    --input-placeholder: var(--slate-400);
+
+    /* Tables */
+    --table-header-bg: var(--slate-50);
+    --table-row-hover: #F3F7FB;
+    --table-border: var(--slate-150);
+
+    /* Buttons */
+    --button-primary-bg: var(--color-primary);
+    --button-primary-hover: var(--color-primary-dark);
+    --button-primary-text: #FFFFFF;
+
+    --button-secondary-bg: var(--color-surface);
+    --button-secondary-hover: var(--slate-50);
+    --button-secondary-text: var(--color-primary);
+    --button-secondary-border: var(--slate-200);
+
+    /* KPIs */
+    --kpi-blue: var(--color-primary);
+    --kpi-green: var(--color-success);
+    --kpi-orange: var(--color-warning);
+    --kpi-track: var(--slate-150);
+
+    /* Statusbar (Footer) */
+    --statusbar-bg: var(--slate-50);
+    --statusbar-border: var(--slate-150);
+    --statusbar-text: var(--slate-500);
+    --statusbar-text-muted: var(--slate-400);
+    --status-indicator: var(--color-success);
+
+    /* ==========================================================================
+       4. Layout, Radii & Elevation
+       ========================================================================== */
+    --radius-sm: 6px;
+    --radius: 10px;
+    --radius-lg: 14px;
+    --radius-full: 9999px;
+
+    --shadow-sm: 0 1px 2px rgba(20, 42, 65, 0.03);
+    --shadow: 0 2px 9px rgba(20, 42, 65, 0.045);
+    --shadow-hover: 0 7px 20px rgba(20, 42, 65, 0.085);
+
+    --sidebar-width: 270px;
+    --header-height: 68px;
+    --footer-height: 40px;
+    --content-max-width: 1320px;
+
+    --transition: 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}

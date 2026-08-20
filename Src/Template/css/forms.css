@@ -1,0 +1,9 @@
+input,select{
+    width:100%;padding:10px 12px;
+    border:1px solid var(--color-border);
+    border-radius:8px;
+    background:var(--color-surface)
+}
+input:focus,select:focus{
+    outline:none;border-color:var(--color-primary)
+}

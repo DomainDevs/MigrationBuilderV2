@@ -1,0 +1,30 @@
+{
+  "success": true,
+  "message": "",
+  "data": {
+    "connections": [
+      {
+        "name": "Source",
+        "provider": "SQL Server",
+        "database": "Northwind"
+      },
+      {
+        "name": "Target",
+        "provider": "SQL Server",
+        "database": "ERP"
+      }
+    ],
+    "packages": [
+      {
+        "name": "dbo.Customer",
+        "enabled": true,
+        "approved": true
+      },
+      {
+        "name": "dbo.Invoice",
+        "enabled": true,
+        "approved": false
+      }
+    ]
+  }
+}

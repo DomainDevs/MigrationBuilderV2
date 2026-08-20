@@ -1,0 +1,114 @@
+.kpi-grid{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:16px;
+}
+
+.card.kpi{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    min-height:190px;
+    padding:20px;
+    background:var(--card-bg);
+    border:1px solid var(--card-border);
+    border-radius:var(--radius-lg);
+    transition:
+        border-color var(--transition),
+        box-shadow var(--transition),
+        transform var(--transition),
+        background var(--transition);
+    text-align:center;
+}
+
+.card.kpi:hover{
+    border-color:var(--color-primary-light);
+    background:var(--card-hover);
+    box-shadow:var(--shadow-hover);
+    transform:translateY(-2px);
+}
+
+.kpi-circle{
+    --size:94px;
+    --progress:75;
+
+    position:relative;
+    width:var(--size);
+    height:var(--size);
+    flex-shrink:0;
+    display:grid;
+    place-items:center;
+    margin-bottom:14px;
+    border-radius:50%;
+
+    background:conic-gradient(
+        from -90deg,
+        var(--color-primary) 0deg 180deg,
+        var(--color-primary-light) 180deg 252deg,
+        var(--color-accent) 252deg 324deg,
+        var(--color-warning) 324deg 360deg
+    );
+}
+
+.kpi-circle::after{
+    content:"";
+    position:absolute;
+    inset:9px;
+    border-radius:50%;
+    background:var(--card-bg);
+}
+
+.kpi-circle-value{
+    position:relative;
+    z-index:1;
+    color:var(--color-text);
+    font-size:15px;
+    font-weight:700;
+    line-height:1;
+}
+
+.kpi-content{
+    min-width:0;
+    width:100%;
+}
+
+.kpi-label{
+    display:block;
+    margin-bottom:5px;
+    color:var(--color-text-muted);
+    font-size:11px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+}
+
+.kpi-content h3{
+    margin:0;
+    color:var(--color-text);
+    font-size:26px;
+    line-height:1;
+    font-weight:700;
+}
+
+.kpi-meta{
+    display:block;
+    margin-top:7px;
+    color:var(--color-text-muted);
+    font-size:11px;
+}
+
+.kpi-trend{
+    display:inline-flex;
+    align-items:center;
+    gap:4px;
+    font-weight:600;
+}
+
+.kpi-trend.up{
+    color:var(--color-success);
+}
+
+.kpi-trend.down{
+    color:var(--color-danger);
+}

@@ -1,0 +1,82 @@
+/* Enterprise Pagination Style - Neutral & Clean */
+.pagination {
+    display: inline-flex;
+    align-items: center;
+    background-color: var(--color-surface, #FFFFFF);
+    border: 1px solid var(--color-border, #CBD5E1);
+    border-radius: 4px;
+    padding: 2px;
+    gap: 2px;
+}
+
+.page-numbers {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+/* Integración de botones de navegación (< >) */
+.pagination .icon-button-sm {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted, #64748B);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.12s ease;
+}
+
+.pagination .icon-button-sm:hover:not(:disabled) {
+    background-color: var(--color-surface-hover, #F1F5F9);
+    color: var(--color-text, #0F172A);
+}
+
+.pagination .icon-button-sm:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+/* Números de página */
+.page-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 6px;
+    border: 1px solid transparent; /* Mantiene la misma dimensión */
+    background-color: transparent;
+    color: var(--color-text, #475569);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border-radius: 3px;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.12s ease-in-out;
+}
+
+.page-num:hover:not(.active) {
+    background-color: var(--color-surface-hover, #F1F5F9);
+    color: var(--color-text-bold, #0F172A);
+}
+
+/* Página activa: Neutro, limpio y sin cambios drásticos de color */
+.page-num.active {
+    background-color: var(--color-surface-hover, #F1F5F9);
+    border-color: var(--color-border-hover, #94A3B8);
+    color: var(--color-text-bold, #0F172A);
+    font-weight: 700;
+}
+
+.page-dots {
+    color: var(--color-text-muted, #94A3B8);
+    font-size: 0.75rem;
+    font-family: ui-monospace, SFMono-Regular, monospace;
+    padding: 0 3px;
+    user-select: none;
+}

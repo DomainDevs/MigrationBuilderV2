@@ -1,0 +1,49 @@
+{
+  "success": true,
+  "message": "",
+  "data": {
+    "kpis": [
+      {
+        "title": "Migrations",
+        "value": 18,
+        "trend": 12,
+        "icon": "database"
+      },
+      {
+        "title": "Tables",
+        "value": 124,
+        "trend": 4,
+        "icon": "table"
+      },
+      {
+        "title": "Packages",
+        "value": 8,
+        "trend": 0,
+        "icon": "package"
+      },
+      {
+        "title": "Success",
+        "value": "99.8%",
+        "trend": 1.2,
+        "icon": "badge-check"
+      }
+    ],
+    "recentActivity": [
+      {
+        "package": "Customers",
+        "status": "Completed",
+        "duration": "00:12"
+      },
+      {
+        "package": "Invoices",
+        "status": "Completed",
+        "duration": "00:07"
+      },
+      {
+        "package": "Products",
+        "status": "Pending",
+        "duration": "-"
+      }
+    ]
+  }
+}

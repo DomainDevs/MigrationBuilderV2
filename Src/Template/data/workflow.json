@@ -1,0 +1,24 @@
+{
+  "success": true,
+  "message": "",
+  "data": {
+    "steps": [
+      {
+        "name": "Planning",
+        "completed": true
+      },
+      {
+        "name": "Artifacts",
+        "completed": true
+      },
+      {
+        "name": "Migration",
+        "completed": false
+      },
+      {
+        "name": "Validation",
+        "completed": false
+      }
+    ]
+  }
+}

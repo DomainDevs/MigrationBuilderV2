@@ -1,0 +1,20 @@
+{
+  "success": true,
+  "message": "",
+  "data": {
+    "executions": [
+      {
+        "date": "2026-08-03 21:15",
+        "package": "dbo.Customer",
+        "status": "Completed",
+        "duration": "00:12"
+      },
+      {
+        "date": "2026-08-03 20:51",
+        "package": "dbo.Invoice",
+        "status": "Failed",
+        "duration": "00:02"
+      }
+    ]
+  }
+}
