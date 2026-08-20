@@ -9,95 +9,208 @@ public sealed class MetadataService
 {
     private readonly IDatabaseContext _database;
 
-    public MetadataService(
-        IDatabaseContext database
-        )
+    public MetadataService(IDatabaseContext database)
     {
         _database = database;
     }
 
     public async Task<List<TableMetadata>> ExtractMetadataAsync(
-        //bool isSource,
         string database,
         string? schema = null,
         List<string>? tables = null)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(database);
 
-        //using IUnitOfWork unitOfWork = isSource? _database["Source"].CreateNew(): _database["Target"].CreateNew();
-        using IUnitOfWork unitOfWork = _database[database].CreateNew();
+        using IUnitOfWork unitOfWork =
+            _database[database].CreateNew();
 
-        var rows = await MetadataQueries.GetMetadataAsync(
-            unitOfWork,
-            schema,
-            tables);
+        IEnumerable<IDictionary<string, object>> rows =
+            await MetadataQueries.GetMetadataAsync(
+                unitOfWork,
+                schema,
+                tables);
 
-        Dictionary<string, TableMetadata> metadata = new();
+        Dictionary<string, TableMetadata> metadata =
+            new(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var reader in rows)
+        foreach (IDictionary<string, object> row in rows)
         {
-            string schemaName = reader["SchemaName"]?.ToString() ?? string.Empty;
-            string tableName = reader["TableName"]?.ToString() ?? string.Empty;
+            string schemaName =
+                GetString(row, "SchemaName");
 
-            string key = $"{schemaName}.{tableName}";
+            string tableName =
+                GetString(row, "TableName");
 
-            if (!metadata.TryGetValue(key, out TableMetadata? table))
+            string key =
+                $"{schemaName}.{tableName}";
+
+            if (!metadata.TryGetValue(
+                    key,
+                    out TableMetadata? table))
             {
                 table = new TableMetadata
                 {
                     Schema = schemaName,
                     Name = tableName,
-                    Columns = new List<ColumnMetadata>()
+                    Columns = []
                 };
 
                 metadata.Add(key, table);
             }
 
-            table.Columns.Add(new ColumnMetadata
-            {
-                Name = reader["ColumnName"]?.ToString() ?? string.Empty,
-                SqlType = reader["DataType"]?.ToString() ?? string.Empty,
-                BaseSqlType = reader["BaseDataType"]?.ToString() ?? string.Empty,
+            table.Columns.Add(
+                new ColumnMetadata
+                {
+                    Name = GetString(
+                        row,
+                        "ColumnName"),
 
-                MaxLength = reader["MaxLength"]?.ToString(),
-                Precision = reader["Precision"]?.ToString(),
-                Scale = reader["Scale"]?.ToString(),
+                    SqlType = GetString(
+                        row,
+                        "DataType"),
 
-                IsNullable = string.Equals(
-                    reader["IsNullable"]?.ToString(),
-                    "YES",
-                    StringComparison.OrdinalIgnoreCase),
+                    BaseSqlType = GetString(
+                        row,
+                        "BaseDataType"),
 
-                IsIdentity = string.Equals(
-                    reader["IsIdentity"]?.ToString(),
-                    "YES",
-                    StringComparison.OrdinalIgnoreCase),
+                    MaxLength = GetNullableString(
+                        row,
+                        "MaxLength"),
 
-                IsComputed = string.Equals(
-                    reader["IsComputed"]?.ToString(),
-                    "YES",
-                    StringComparison.OrdinalIgnoreCase),
+                    Precision = GetNullableString(
+                        row,
+                        "Precision"),
 
-                Collation = reader["Collation"]?.ToString(),
-                DefaultValue = reader["DefaultValue"]?.ToString(),
+                    Scale = GetNullableString(
+                        row,
+                        "Scale"),
 
-                IsPrimaryKey = string.Equals(
-                    reader["IsPrimaryKey"]?.ToString(),
-                    "YES",
-                    StringComparison.OrdinalIgnoreCase),
+                    IsNullable = IsYes(
+                        row,
+                        "IsNullable"),
 
-                PrimaryKeyName = reader["PrimaryKeyName"]?.ToString(),
-                ForeignTable = reader["ForeignTable"]?.ToString(),
-                ForeignColumn = reader["ForeignColumn"]?.ToString(),
-                ForeignKeyName = reader["ForeignKeyName"]?.ToString(),
-                FK_DeleteAction = reader["FK_DeleteAction"]?.ToString(),
-                FK_UpdateAction = reader["FK_UpdateAction"]?.ToString(),
-                FK_IsDisabled = reader["FK_IsDisabled"]?.ToString() == "1",
-                FK_IsNotTrusted = reader["FK_IsNotTrusted"]?.ToString() == "1",
-                RecordCount = reader["RecordCount"] is DBNull? 0 : Convert.ToInt64(reader["RecordCount"])
+                    IsIdentity = IsYes(
+                        row,
+                        "IsIdentity"),
 
-            });
+                    IsComputed = IsYes(
+                        row,
+                        "IsComputed"),
+
+                    Collation = GetNullableString(
+                        row,
+                        "Collation"),
+
+                    DefaultValue = GetNullableString(
+                        row,
+                        "DefaultValue"),
+
+                    IsPrimaryKey = IsYes(
+                        row,
+                        "IsPrimaryKey"),
+
+                    PrimaryKeyName = GetNullableString(
+                        row,
+                        "PrimaryKeyName"),
+
+                    ForeignTable = GetNullableString(
+                        row,
+                        "ForeignTable"),
+
+                    ForeignColumn = GetNullableString(
+                        row,
+                        "ForeignColumn"),
+
+                    ForeignKeyName = GetNullableString(
+                        row,
+                        "ForeignKeyName"),
+
+                    FK_DeleteAction = GetNullableString(
+                        row,
+                        "FK_DeleteAction"),
+
+                    FK_UpdateAction = GetNullableString(
+                        row,
+                        "FK_UpdateAction"),
+
+                    FK_IsDisabled = IsOne(
+                        row,
+                        "FK_IsDisabled"),
+
+                    FK_IsNotTrusted = IsOne(
+                        row,
+                        "FK_IsNotTrusted"),
+
+                    RecordCount = GetInt64(
+                        row,
+                        "RecordCount")
+                });
         }
 
         return metadata.Values.ToList();
+    }
+
+    private static string GetString(
+        IDictionary<string, object> row,
+        string column)
+    {
+        object? value = row[column];
+
+        return value is null or DBNull
+            ? string.Empty
+            : value.ToString() ?? string.Empty;
+    }
+
+    private static string? GetNullableString(
+        IDictionary<string, object> row,
+        string column)
+    {
+        object? value = row[column];
+
+        return value is null or DBNull
+            ? null
+            : value.ToString();
+    }
+
+    private static bool IsYes(
+        IDictionary<string, object> row,
+        string column)
+    {
+        object? value = row[column];
+
+        return value is string text &&
+               text.Equals(
+                   "YES",
+                   StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsOne(
+        IDictionary<string, object> row,
+        string column)
+    {
+        object? value = row[column];
+
+        return value switch
+        {
+            byte number => number == 1,
+            short number => number == 1,
+            int number => number == 1,
+            long number => number == 1,
+            _ => string.Equals(
+                value?.ToString(),
+                "1",
+                StringComparison.Ordinal)
+        };
+    }
+
+    private static long GetInt64(
+        IDictionary<string, object> row,
+        string column)
+    {
+        object? value = row[column];
+
+        return value is null or DBNull
+            ? 0L
+            : Convert.ToInt64(value);
     }
 }

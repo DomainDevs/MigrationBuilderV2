@@ -24,68 +24,57 @@ internal sealed class RecordCountService : IRecordCountService
         ArgumentException.ThrowIfNullOrWhiteSpace(command.Schema);
         ArgumentNullException.ThrowIfNull(command.Tables);
 
-        using var source =
-            _database[command.Source].CreateNew();
+        string schema = command.Schema;
 
-        using var target =
-            _database[command.Target].CreateNew();
+        List<string> tables = command.Tables
+            .Where(static table => !string.IsNullOrWhiteSpace(table))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
-        List<RecordCountResultDto> results =
-            new(command.Tables.Count);
+        if (tables.Count == 0)
+            return [];
 
-        foreach (string table in command.Tables)
+        using var source = _database[command.Source].CreateNew();
+        using var target = _database[command.Target].CreateNew();
+
+        // Una consulta por base de datos.
+        // Ambas bases se consultan en paralelo, sin generar carga
+        // adicional dentro de cada base.
+        Task<Dictionary<string, long>> sourceTask =
+            GetRecordCountsAsync(source, schema);
+
+        Task<Dictionary<string, long>> targetTask =
+            GetRecordCountsAsync(target, schema);
+
+        await Task.WhenAll(sourceTask, targetTask);
+
+        Dictionary<string, long> sourceCounts = sourceTask.Result;
+        Dictionary<string, long> targetCounts = targetTask.Result;
+
+        List<RecordCountResultDto> results = new(tables.Count);
+
+        foreach (string table in tables)
         {
-            if (string.IsNullOrWhiteSpace(table))
-                continue;
-
             bool sourceExists =
-                await TableExistsAsync(
-                    source,
-                    command.Schema!,
-                    table);
+                sourceCounts.TryGetValue(table, out long sourceCount);
 
             bool targetExists =
-                await TableExistsAsync(
-                    target,
-                    command.Schema!,
-                    table);
+                targetCounts.TryGetValue(table, out long targetCount);
 
-            long? sourceCount = null;
-            long? targetCount = null;
-
-            if (sourceExists)
-            {
-                sourceCount =
-                    await GetCountAsync(
-                        source,
-                        command.Schema!,
-                        table);
-            }
-
-            if (targetExists)
-            {
-                targetCount =
-                    await GetCountAsync(
-                        target,
-                        command.Schema!,
-                        table);
-            }
-
-            string status =
-                !sourceExists
-                    ? "SOURCE_NOT_FOUND"
-                    : !targetExists
-                        ? "TARGET_NOT_FOUND"
-                        : sourceCount == targetCount
-                            ? "OK"
-                            : "DIFFERENT";
+            string status = !sourceExists
+                ? "SOURCE_NOT_FOUND"
+                : !targetExists
+                    ? "TARGET_NOT_FOUND"
+                    : sourceCount == targetCount
+                        ? "OK"
+                        : "DIFFERENT";
 
             results.Add(new RecordCountResultDto
             {
-                Schema = command.Schema!,
+                Schema = schema,
                 Table = table,
-                SourceCount = sourceCount,
-                TargetCount = targetCount,
+                SourceCount = sourceExists ? sourceCount : null,
+                TargetCount = targetExists ? targetCount : null,
                 Status = status
             });
         }
@@ -93,53 +82,43 @@ internal sealed class RecordCountService : IRecordCountService
         return results;
     }
 
-    private static async Task<bool> TableExistsAsync(
+    private static async Task<Dictionary<string, long>> GetRecordCountsAsync(
         IUnitOfWork database,
-        string schema,
-        string table)
+        string schema)
     {
         const string sql = """
-            SELECT COUNT_BIG(*)
-            FROM sys.tables AS t
-            INNER JOIN sys.schemas AS s
+            SELECT
+                t.name AS TableName,
+                ISNULL(SUM(p.rows), 0) AS TotalRows
+            FROM sys.tables t
+            INNER JOIN sys.schemas s
                 ON s.schema_id = t.schema_id
+            INNER JOIN sys.partitions p
+                ON p.object_id = t.object_id
             WHERE s.name = @Schema
-              AND t.name = @Table
+              AND p.index_id IN (0, 1)
+            GROUP BY t.name;
             """;
 
-        long count =
-            (await database.Sql.FromSqlAsync<long>(
+        var parameters = new Dictionary<string, object>
+        {
+            ["Schema"] = schema
+        };
+
+        var queryResults =
+            await database.Sql.FromSqlAsync<TableCountRawResult>(
                 sql,
-                new
-                {
-                    Schema = schema,
-                    Table = table
-                }))
-            .Single();
+                parameters);
 
-        return count > 0;
+        return queryResults.ToDictionary(
+            static x => x.TableName,
+            static x => x.TotalRows,
+            StringComparer.OrdinalIgnoreCase);
     }
 
-    private static async Task<long> GetCountAsync(
-        IUnitOfWork database,
-        string schema,
-        string table)
+    private sealed class TableCountRawResult
     {
-        string quotedSchema = QuoteIdentifier(schema);
-        string quotedTable = QuoteIdentifier(table);
-
-        string sql = $"""
-            SELECT COUNT_BIG(*)
-            FROM {quotedSchema}.{quotedTable}
-            """;
-
-        return
-            (await database.Sql.FromSqlAsync<long>(sql))
-            .Single();
-    }
-
-    private static string QuoteIdentifier(string value)
-    {
-        return $"[{value.Replace("]", "]]", StringComparison.Ordinal)}]";
+        public string TableName { get; set; } = string.Empty;
+        public long TotalRows { get; set; }
     }
 }

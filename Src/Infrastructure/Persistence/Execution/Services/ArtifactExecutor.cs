@@ -17,13 +17,13 @@ namespace Persistence.Execution.Services;
 
 public sealed class ArtifactExecutor
 {
-    private readonly IDatabaseContext _database;
+    private const long LargeTableThreshold = 1_000_000;
 
+    private readonly IDatabaseContext _database;
     private readonly IConfiguration _configuration;
     private readonly IBulkTransferEngine _bulk;
     private readonly MetadataService _metadataService;
     private readonly MigrationOptions _migrationOptions;
-
     private readonly ConnectionConfig _sourceConfig;
     private readonly ConnectionConfig _targetConfig;
 
@@ -34,10 +34,9 @@ public sealed class ArtifactExecutor
         IBulkTransferEngine bulk)
     {
         _database = database;
-
+        _metadataService = metadataService;
         _configuration = configuration;
         _bulk = bulk;
-        _metadataService = metadataService;
 
         _sourceConfig =
             configuration
@@ -53,6 +52,11 @@ public sealed class ArtifactExecutor
             ?? throw new InvalidOperationException(
                 "No se encontró la configuración Connections:Target.");
 
+        _migrationOptions =
+            configuration
+                .GetSection(MigrationOptions.SectionName)
+                .Get<MigrationOptions>()
+            ?? new MigrationOptions();
     }
 
     public async Task ExecuteAsync(string artifactPath)
@@ -60,42 +64,37 @@ public sealed class ArtifactExecutor
         ArgumentException.ThrowIfNullOrWhiteSpace(artifactPath);
 
         if (!File.Exists(artifactPath))
+        {
             throw new FileNotFoundException(
                 "No se encontró el artefacto.",
                 artifactPath);
-
-
-        using var source = _database["Source"].CreateNew();
-        using var target = _database["Target"].CreateNew();
-
-        string extension = Path.GetExtension(artifactPath);
-
-        switch (extension.ToLowerInvariant())
-        {
-            case ".sql":
-                break;
-
-            case ".dtsx":
-
-                ConnectionConfig sourceConfig =
-                    _configuration.GetSection("SourceDB").Get<ConnectionConfig>()!;
-
-                ConnectionConfig targetConfig =
-                    _configuration.GetSection("DestinationDB").Get<ConnectionConfig>()!;
-
-                DTExecRunner.EjecutarPaqueteETL(
-                    artifactPath,
-                    sourceConfig,
-                    targetConfig);
-
-                return;
-
-            default:
-                throw new NotSupportedException(
-                    $"El artefacto '{extension}' no es compatible.");
         }
 
-        string sql = await File.ReadAllTextAsync(artifactPath);
+        string extension =
+            Path.GetExtension(artifactPath);
+
+        if (extension.Equals(
+                ".dtsx",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            DTExecRunner.EjecutarPaqueteETL(
+                artifactPath,
+                _sourceConfig,
+                _targetConfig);
+
+            return;
+        }
+
+        if (!extension.Equals(
+                ".sql",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            throw new NotSupportedException(
+                $"El artefacto '{extension}' no es compatible.");
+        }
+
+        string sql =
+            await File.ReadAllTextAsync(artifactPath);
 
         sql = RemoveComments(sql);
 
@@ -104,85 +103,178 @@ public sealed class ArtifactExecutor
 
         SqlScriptValidator.Validate(sql);
 
-        string fileName = Path.GetFileNameWithoutExtension(artifactPath);
+        ArtifactInfo artifact =
+            ParseArtifact(
+                artifactPath);
 
-        string[] parts = fileName.Split('_', 2);
-
-        string artifactType = parts[0];
-
-        string[] tableParts = parts[1].Split('.');
-
-        string schema = tableParts[0];
-
-        string sqlOrigin = "";
-
-        string table = tableParts[1]
-            .Replace("WF_", "", StringComparison.OrdinalIgnoreCase)
-            .Replace("STG_", "", StringComparison.OrdinalIgnoreCase);
-
-        List<string> tables = [tableParts[1]]; //[table];
-
-        bool isLocal =
-            artifactType.Equals("LOCAL", StringComparison.OrdinalIgnoreCase);
-
-        if (isLocal)
+        if (artifact.Type is ArtifactType.Begin or ArtifactType.End)
         {
+            using IUnitOfWork target =
+                _database["Target"].CreateNew();
+
+            await ExecuteSqlBatchesAsync(
+                target,
+                sql);
+
+            return;
+        }
+
+        List<string> tables =
+            [artifact.RawTable];
+
+        if (artifact.Type is ArtifactType.Local)
+        {
+            using IUnitOfWork target =
+                _database["Target"].CreateNew();
+
             await ValidateForeignKeysAsync(
                 target,
-                schema,
-                table);
+                artifact.Schema,
+                artifact.Table);
+
+            await ExecuteSqlBatchesAsync(
+                target,
+                sql);
+
+            return;
         }
-        else
+
+        using IUnitOfWork source =
+            _database["Source"].CreateNew();
+
+        using IUnitOfWork targetDatabase =
+            _database["Target"].CreateNew();
+
+        long sourceCount =
+            await GetSourceRecordCountAsync(
+                source,
+                artifact.Schema,
+                artifact.Table);
+
+        if (sourceCount != 0)
         {
-            if(!artifactType.Equals("BEGIN", StringComparison.OrdinalIgnoreCase) && !artifactType.Equals("END", StringComparison.OrdinalIgnoreCase))
+            if (sourceCount > LargeTableThreshold)
             {
-                sqlOrigin = $"""
-    IF OBJECT_ID(N'[{schema}].[{table}]', N'U') IS NOT NULL
-    BEGIN
-        SELECT COUNT(*)
-        FROM [{schema}].[{table}]
-    END
-    ELSE
-    BEGIN
-        SELECT 0
-    END
-    """;
-
-                long totalOrigin =
-                    (await source.Sql.FromSqlAsync<long>(sqlOrigin))
-                    .Single();
-
-                if (totalOrigin != 0)
-                {
-
-                    if (totalOrigin > 1000000) //Si supera el millon no puedo pasar por STG o por WF
-                    {
-                        tables = [table];
-                    }
-
-                    await ValidateForeignKeysAsync(
-                        target,
-                        schema,
-                        table);
-                }
+                tables = [artifact.Table];
             }
 
-
+            await ValidateForeignKeysAsync(
+                targetDatabase,
+                artifact.Schema,
+                artifact.Table);
         }
 
-        if (artifactType.Equals("SQL", StringComparison.OrdinalIgnoreCase))
+        if (artifact.Type is ArtifactType.Sql)
         {
             await ExecuteBulkTransferAsync(
                 sql,
-                schema,
+                artifact.Schema,
                 tables);
 
             return;
         }
 
         await ExecuteSqlBatchesAsync(
-            target,
+            targetDatabase,
             sql);
+    }
+
+    private static ArtifactInfo ParseArtifact(
+        string artifactPath)
+    {
+        string fileName =
+            Path.GetFileNameWithoutExtension(
+                artifactPath);
+
+        string[] parts =
+            fileName.Split(
+                '_',
+                2);
+
+        if (parts.Length != 2)
+        {
+            throw new InvalidOperationException(
+                $"El nombre del artefacto '{fileName}' no tiene el formato esperado.");
+        }
+
+        string artifactType =
+            parts[0];
+
+        string[] tableParts =
+            parts[1].Split(
+                '.',
+                2);
+
+        if (tableParts.Length != 2)
+        {
+            throw new InvalidOperationException(
+                $"El nombre del artefacto '{fileName}' no contiene un esquema y una tabla válidos.");
+        }
+
+        string schema =
+            tableParts[0];
+
+        string rawTable =
+            tableParts[1];
+
+        string table =
+            rawTable
+                .Replace(
+                    "WF_",
+                    string.Empty,
+                    StringComparison.OrdinalIgnoreCase)
+                .Replace(
+                    "STG_",
+                    string.Empty,
+                    StringComparison.OrdinalIgnoreCase);
+
+        ArtifactType type =
+            artifactType.ToUpperInvariant() switch
+            {
+                "BEGIN" => ArtifactType.Begin,
+                "END" => ArtifactType.End,
+                "LOCAL" => ArtifactType.Local,
+                "SQL" => ArtifactType.Sql,
+                _ => ArtifactType.Other
+            };
+
+        return new ArtifactInfo(
+            type,
+            schema,
+            table,
+            rawTable);
+    }
+
+    private static async Task<long> GetSourceRecordCountAsync(
+        IUnitOfWork source,
+        string schema,
+        string table)
+    {
+        const string sql = """
+            SELECT
+                ISNULL(SUM(p.rows), 0)
+            FROM sys.tables t
+            INNER JOIN sys.schemas s
+                ON s.schema_id = t.schema_id
+            INNER JOIN sys.partitions p
+                ON p.object_id = t.object_id
+            WHERE s.name = @Schema
+              AND t.name = @Table
+              AND p.index_id IN (0, 1);
+            """;
+
+        var parameters = new
+        {
+            Schema = schema,
+            Table = table
+        };
+
+        IEnumerable<long> result =
+            await source.Sql.FromSqlAsync<long>(
+                sql,
+                parameters);
+
+        return result.FirstOrDefault();
     }
 
     private async Task ExecuteSqlBatchesAsync(
@@ -194,7 +286,8 @@ public sealed class ArtifactExecutor
             if (string.IsNullOrWhiteSpace(batch))
                 continue;
 
-            await target.Sql.ExecuteAsync(batch, 
+            await target.Sql.ExecuteAsync(
+                batch,
                 commandTimeout: _targetConfig.TimeOut);
         }
     }
@@ -215,25 +308,43 @@ public sealed class ArtifactExecutor
 
         BulkTransferOptions options = new()
         {
-            BatchSize = _configuration.GetValue<int>("Migration:Execution:BatchSize"),
-            Timeout = _configuration.GetValue<int>("Migration:Execution:BulkCopyTimeout")
+            BatchSize =
+                _configuration.GetValue<int>(
+                    "Migration:Execution:BatchSize"),
+
+            Timeout =
+                _configuration.GetValue<int>(
+                    "Migration:Execution:BulkCopyTimeout")
         };
 
-        List<TableMetadata> artifactTable =
+        List<TableMetadata> artifactMetadata =
             await _metadataService.ExtractMetadataAsync(
                 "Target",
                 schema,
                 tables);
 
+        if (artifactMetadata.Count == 0)
+        {
+            throw new InvalidOperationException(
+                $"No se encontró metadata para '{schema}.{tables[0]}'.");
+        }
+
+        if (artifactMetadata.Count > 1)
+        {
+            throw new InvalidOperationException(
+                $"Se encontró más de una definición para la tabla '{schema}.{tables[0]}'.");
+        }
+
         await _bulk.TransferAsync(
             sourceConnection,
             targetConnection,
             sql,
-            artifactTable.Single(),
+            artifactMetadata[0],
             options);
     }
 
-    private static string RemoveComments(string sql)
+    private static string RemoveComments(
+        string sql)
     {
         ArgumentNullException.ThrowIfNull(sql);
 
@@ -241,14 +352,18 @@ public sealed class ArtifactExecutor
 
         IList<TSqlParserToken> tokens =
             new TSql170Parser(false)
-                .GetTokenStream(new StringReader(sql), out errors);
+                .GetTokenStream(
+                    new StringReader(sql),
+                    out errors);
 
-        StringBuilder builder = new();
+        StringBuilder builder =
+            new(sql.Length);
 
         foreach (TSqlParserToken token in tokens)
         {
-            if (token.TokenType is TSqlTokenType.MultilineComment
-                or TSqlTokenType.SingleLineComment)
+            if (token.TokenType is
+                TSqlTokenType.MultilineComment or
+                TSqlTokenType.SingleLineComment)
             {
                 continue;
             }
@@ -259,19 +374,24 @@ public sealed class ArtifactExecutor
         return builder.ToString();
     }
 
-    private static IEnumerable<string> SplitBatches(string sql)
+    private static IEnumerable<string> SplitBatches(
+        string sql)
     {
         ArgumentNullException.ThrowIfNull(sql);
 
-        StringBuilder batch = new();
+        StringBuilder batch =
+            new();
 
-        using StringReader reader = new(sql);
+        using StringReader reader =
+            new(sql);
 
         string? line;
 
         while ((line = reader.ReadLine()) is not null)
         {
-            if (line.Trim().Equals("GO", StringComparison.OrdinalIgnoreCase))
+            if (line.Trim().Equals(
+                    "GO",
+                    StringComparison.OrdinalIgnoreCase))
             {
                 if (batch.Length > 0)
                 {
@@ -294,43 +414,72 @@ public sealed class ArtifactExecutor
         string schema,
         string table)
     {
-        List<TableMetadata> tables =
+        List<TableMetadata> metadata =
             await _metadataService.ExtractMetadataAsync(
                 "Target",
                 schema,
                 [table]);
 
-        TableMetadata metadata = tables.Single();
+        if (metadata.Count == 0)
+            return;
 
-        IEnumerable<ColumnMetadata> foreignKeys =
-            metadata.Columns
-                .Where(x => !string.IsNullOrWhiteSpace(x.ForeignTable));
-
-        foreach (ColumnMetadata foreignKey in foreignKeys)
+        if (metadata.Count > 1)
         {
-            // Ignora claves foráneas autorreferenciadas.
-            if (foreignKey.ForeignTable.Equals(
-                table,
-                StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException(
+                $"Se encontró más de una definición para la tabla '{schema}.{table}'.");
+        }
+
+        TableMetadata tableMetadata =
+            metadata[0];
+
+        IEnumerable<string> foreignTables =
+            tableMetadata.Columns
+                .Where(static x =>
+                    !string.IsNullOrWhiteSpace(
+                        x.ForeignTable))
+                .Select(static x =>
+                    x.ForeignTable!)
+                .Distinct(
+                    StringComparer.OrdinalIgnoreCase);
+
+        foreach (string foreignTable in foreignTables)
+        {
+            if (foreignTable.Equals(
+                    table,
+                    StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
 
             string sql = $"""
-            SELECT TOP (1) 1
-            FROM [{schema}].[{foreignKey.ForeignTable}]
-            """;
+                SELECT TOP (1) 1
+                FROM [{schema}].[{foreignTable}];
+                """;
 
-            long total =
-                (await target.Sql.FromSqlAsync<long>(sql))
-                .Single();
+            IEnumerable<int> result =
+                await target.Sql.FromSqlAsync<int>(
+                    sql);
 
-            if (total == 0)
+            if (!result.Any())
             {
                 throw new InvalidOperationException(
-                    $"No es posible migrar la tabla '{schema}.{table}' porque la tabla padre '{schema}.{foreignKey.ForeignTable}' no contiene registros.");
+                    $"No es posible migrar la tabla '{schema}.{table}' porque la tabla padre '{schema}.{foreignTable}' no contiene registros.");
             }
         }
     }
 
+    private readonly record struct ArtifactInfo(
+        ArtifactType Type,
+        string Schema,
+        string Table,
+        string RawTable);
+
+    private enum ArtifactType
+    {
+        Other,
+        Begin,
+        End,
+        Local,
+        Sql
+    }
 }
