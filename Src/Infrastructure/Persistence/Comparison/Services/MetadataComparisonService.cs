@@ -5,6 +5,7 @@ using DataToolkit.Library;
 using Microsoft.Extensions.Configuration;
 using Persistence.Metadata.Services;
 using Persistence.Migration.Metadata;
+using System.Diagnostics;
 
 namespace Persistence.Comparison.Services;
 
@@ -24,16 +25,17 @@ public sealed class MetadataComparisonService : IMetadataComparisonService
     public async Task<MetadataComparisonResult> CompareAsync(
         CompareMetadataCommand command)
     {
+        Stopwatch stopwatch = Stopwatch.StartNew();
+
         Task<List<TableMetadata>> sourceTask =
             _metadataService.ExtractMetadataAsync(
-                command.Source, //"Target"
+                command.Source,
                 command.Schema,
                 command.Tables);
 
-        
         Task<List<TableMetadata>> targetTask =
             _metadataService.ExtractMetadataAsync(
-                command.Target, //"Knowledge"
+                command.Target,
                 command.Schema,
                 command.Tables);
 
@@ -49,9 +51,15 @@ public sealed class MetadataComparisonService : IMetadataComparisonService
             MetadataNormalizer.NormalizeColumns(
                 targetTask.Result);
 
-        return Compare(
-            source,
-            target);
+        MetadataComparisonResult result =
+            Compare(source, target);
+
+        stopwatch.Stop();
+
+        result.ElapsedMilliseconds =
+            stopwatch.ElapsedMilliseconds;
+
+        return result;
     }
 
     private static MetadataComparisonResult Compare(

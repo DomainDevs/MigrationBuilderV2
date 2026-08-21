@@ -8,11 +8,17 @@ using Microsoft.Extensions.Options;
 using Persistence.Metadata.Services;
 using Persistence.Migration.Metadata;
 using Shared.Options;
+using System.Diagnostics;
 
 namespace Persistence.Comparison.Services;
 
 public sealed class CompareValidationService : ICompareValidationService
 {
+    private const long LargeTableRecordCountThreshold = 10_000_000;
+    private const int ComparisonBatchSize = 100;
+    private const int MaxConcurrentBatches = 2;
+    private const int CommandTimeout = 1600;
+
     private readonly MetadataService _metadataService;
     private readonly MigrationOptions _options;
     private readonly IConfiguration _configuration;
@@ -33,6 +39,8 @@ public sealed class CompareValidationService : ICompareValidationService
     public async Task<CompareValidationResponseDto> CompareValidationAsync(
         CompareValidationCommand command)
     {
+        Stopwatch stopwatch = Stopwatch.StartNew();
+
         string strSource =
             _configuration[$"Connections:{command.Source}:Database"]
             ?? throw new InvalidOperationException(
@@ -65,25 +73,29 @@ public sealed class CompareValidationService : ICompareValidationService
         List<string> differences = [];
         List<string> warnings = [];
 
-        List<TableMetadata> sourceMetadata =
-            await _metadataService.ExtractMetadataAsync(
+        Task<List<TableMetadata>> sourceTask =
+            _metadataService.ExtractMetadataAsync(
                 command.Source,
                 command.Schema,
                 command.Tables);
 
-        sourceMetadata =
-            MetadataNormalizer.NormalizeColumns(
-                sourceMetadata);
-
-        List<TableMetadata> targetMetadata =
-            await _metadataService.ExtractMetadataAsync(
+        Task<List<TableMetadata>> targetTask =
+            _metadataService.ExtractMetadataAsync(
                 command.Target,
                 command.Schema,
                 command.Tables);
 
-        targetMetadata =
+        await Task.WhenAll(
+            sourceTask,
+            targetTask);
+
+        List<TableMetadata> sourceMetadata =
             MetadataNormalizer.NormalizeColumns(
-                targetMetadata);
+                sourceTask.Result);
+
+        List<TableMetadata> targetMetadata =
+            MetadataNormalizer.NormalizeColumns(
+                targetTask.Result);
 
         Dictionary<string, TableMetadata> sourceTables =
             sourceMetadata.ToDictionary(
@@ -100,20 +112,14 @@ public sealed class CompareValidationService : ICompareValidationService
             string tableKey =
                 $"{command.Schema}.{table}";
 
-            bool existsInSource =
-                sourceTables.ContainsKey(tableKey);
-
-            bool existsInTarget =
-                targetTables.ContainsKey(tableKey);
-
-            if (!existsInSource)
+            if (!sourceTables.ContainsKey(tableKey))
             {
                 warnings.Add(
                     $"La tabla solicitada '{tableKey}' " +
                     "no existe en la base de datos Source.");
             }
 
-            if (!existsInTarget)
+            if (!targetTables.ContainsKey(tableKey))
             {
                 warnings.Add(
                     $"La tabla solicitada '{tableKey}' " +
@@ -121,10 +127,7 @@ public sealed class CompareValidationService : ICompareValidationService
             }
         }
 
-        using var target =
-            _database[command.Target].CreateNew();
-
-        int validatedCount = 0;
+        List<TableComparisonWorkItem> comparisonTables = [];
 
         foreach (TableMetadata targetTable in targetMetadata)
         {
@@ -152,7 +155,9 @@ public sealed class CompareValidationService : ICompareValidationService
                 continue;
             }
 
-            if (HasNonComparableColumns(sourceTable, targetTable))
+            if (HasNonComparableColumns(
+                    sourceTable,
+                    targetTable))
             {
                 warnings.Add(
                     $"La tabla '{tableKey}' no se pudo comparar " +
@@ -161,54 +166,80 @@ public sealed class CompareValidationService : ICompareValidationService
                 continue;
             }
 
-            string columnList =
-                string.Join(
-                    ", ",
-                    targetTable.Columns.Select(
-                        column => $"[{column.Name}]"));
+            long sourceRecordCount =
+                GetRecordCount(sourceTable);
 
-            string sql = $$"""
-            SELECT
-                CASE
-                    WHEN EXISTS
-                    (
-                        SELECT {{columnList}}
-                        FROM [{{strSource}}].[{{targetTable.Schema}}].[{{targetTable.Name}}]
+            long targetRecordCount =
+                GetRecordCount(targetTable);
 
-                        EXCEPT
-
-                        SELECT {{columnList}}
-                        FROM [{{strTarget}}].[{{targetTable.Schema}}].[{{targetTable.Name}}]
-                    )
-                    OR EXISTS
-                    (
-                        SELECT {{columnList}}
-                        FROM [{{strTarget}}].[{{targetTable.Schema}}].[{{targetTable.Name}}]
-
-                        EXCEPT
-
-                        SELECT {{columnList}}
-                        FROM [{{strSource}}].[{{targetTable.Schema}}].[{{targetTable.Name}}]
-                    )
-                    THEN 1
-                    ELSE 0
-                END AS HasDifferences;
-            """;
-
-            int hasDifferences =
-                (await target.Sql.FromSqlAsync<int>(
-                    sql,
-                    commandTimeout: 1000))
-                .Single();
-
-            validatedCount++;
-
-            if (hasDifferences == 1)
+            /*
+             * El Count ya forma parte del metadata.
+             *
+             * Si es diferente, no necesitamos leer los datos.
+             */
+            if (sourceRecordCount != targetRecordCount)
             {
-                differences.Add(
-                    tableKey);
+                differences.Add(tableKey);
+                continue;
+            }
+
+            /*
+             * Ambas tablas están vacías.
+             */
+            if (sourceRecordCount == 0)
+            {
+                continue;
+            }
+
+            comparisonTables.Add(
+                new TableComparisonWorkItem(
+                    sourceTable,
+                    targetTable,
+                    sourceRecordCount));
+        }
+
+        int validatedCount =
+            comparisonTables.Count +
+            differences.Count;
+
+        if (comparisonTables.Count > 0)
+        {
+            List<List<TableComparisonWorkItem>> batches =
+                CreateBatches(
+                    comparisonTables,
+                    ComparisonBatchSize);
+
+            using SemaphoreSlim semaphore =
+                new(MaxConcurrentBatches);
+
+            List<Task<List<string>>> tasks =
+                new(batches.Count);
+
+            foreach (List<TableComparisonWorkItem> batch in batches)
+            {
+                tasks.Add(
+                    CompareBatchAsync(
+                        batch,
+                        command.Target,
+                        strSource,
+                        strTarget,
+                        semaphore));
+            }
+
+            List<string>[] batchResults =
+                await Task.WhenAll(tasks);
+
+            foreach (List<string> batchDifferences in batchResults)
+            {
+                differences.AddRange(
+                    batchDifferences);
             }
         }
+
+        differences.Sort(
+            StringComparer.OrdinalIgnoreCase);
+
+        stopwatch.Stop();
 
         return new CompareValidationResponseDto
         {
@@ -217,9 +248,393 @@ public sealed class CompareValidationService : ICompareValidationService
             Tables = targetMetadata.Count,
             Validated = validatedCount,
             WithDifferences = differences.Count,
+            ElapsedMilliseconds = stopwatch.ElapsedMilliseconds,
+            ElapsedTime = stopwatch.Elapsed.ToString(@"hh\:mm\:ss\.fff"),
             Differences = differences,
             Warnings = warnings
         };
+    }
+
+    private async Task<List<string>> CompareBatchAsync(
+        List<TableComparisonWorkItem> tables,
+        string targetConnection,
+        string sourceDatabase,
+        string targetDatabase,
+        SemaphoreSlim semaphore)
+    {
+        await semaphore.WaitAsync();
+
+        try
+        {
+            string sql =
+                BuildComparisonSql(
+                    tables,
+                    sourceDatabase,
+                    targetDatabase);
+
+            /*
+             * IMPORTANTE:
+             *
+             * targetConnection es el alias configurado,
+             * no necesariamente el nombre físico de la BD.
+             */
+            using var target =
+                _database[targetConnection].CreateNew();
+
+            IEnumerable<IDictionary<string, object>> rows =
+                await target.Sql.FromSqlDictionaryAsync(
+                    sql,
+                    commandTimeout: CommandTimeout);
+
+            List<string> differences = [];
+
+            foreach (IDictionary<string, object> row in rows)
+            {
+                string tableKey =
+                    row["TableName"]?.ToString()
+                    ?? string.Empty;
+
+                int hasDifferences =
+                    row["HasDifferences"] is DBNull
+                        ? 0
+                        : Convert.ToInt32(
+                            row["HasDifferences"]);
+
+                if (hasDifferences == 1)
+                {
+                    differences.Add(tableKey);
+                }
+            }
+
+            return differences;
+        }
+        finally
+        {
+            semaphore.Release();
+        }
+    }
+
+    private static string BuildComparisonSql(
+        List<TableComparisonWorkItem> tables,
+        string sourceDatabase,
+        string targetDatabase)
+    {
+        List<string> queries =
+            new(tables.Count);
+
+        foreach (TableComparisonWorkItem workItem in tables)
+        {
+            string query;
+
+            bool isLargeTable =
+                workItem.RecordCount >
+                LargeTableRecordCountThreshold;
+
+            bool hasPrimaryKey =
+                HasPrimaryKey(
+                    workItem.SourceTable);
+
+            bool samePrimaryKey =
+                HasSamePrimaryKey(
+                    workItem.SourceTable,
+                    workItem.TargetTable);
+
+            if (isLargeTable &&
+                hasPrimaryKey &&
+                samePrimaryKey)
+            {
+                query =
+                    BuildLargeTableHashComparisonSql(
+                        workItem,
+                        sourceDatabase,
+                        targetDatabase);
+            }
+            else
+            {
+                query =
+                    BuildExceptComparisonSql(
+                        workItem,
+                        sourceDatabase,
+                        targetDatabase);
+            }
+
+            queries.Add(query);
+        }
+
+        return string.Join(
+            Environment.NewLine +
+            "UNION ALL" +
+            Environment.NewLine,
+            queries);
+    }
+
+    private static string BuildExceptComparisonSql(
+        TableComparisonWorkItem workItem,
+        string sourceDatabase,
+        string targetDatabase)
+    {
+        TableMetadata table =
+            workItem.TargetTable;
+
+        string tableName =
+            $"[{table.Schema}].[{table.Name}]";
+
+        string columnList =
+            string.Join(
+                ", ",
+                table.Columns.Select(
+                    column => $"[{column.Name}]"));
+
+        string tableKey =
+            EscapeSqlLiteral(
+                $"{table.Schema}.{table.Name}");
+
+        return $$"""
+        SELECT
+            N'{{tableKey}}' AS TableName,
+            CASE
+                WHEN EXISTS
+                (
+                    SELECT {{columnList}}
+                    FROM [{{sourceDatabase}}].{{tableName}}
+
+                    EXCEPT
+
+                    SELECT {{columnList}}
+                    FROM [{{targetDatabase}}].{{tableName}}
+                )
+                OR EXISTS
+                (
+                    SELECT {{columnList}}
+                    FROM [{{targetDatabase}}].{{tableName}}
+
+                    EXCEPT
+
+                    SELECT {{columnList}}
+                    FROM [{{sourceDatabase}}].{{tableName}}
+                )
+                THEN 1
+                ELSE 0
+            END AS HasDifferences
+        """;
+    }
+
+    private static string BuildLargeTableHashComparisonSql(
+        TableComparisonWorkItem workItem,
+        string sourceDatabase,
+        string targetDatabase)
+    {
+        TableMetadata sourceTable =
+            workItem.SourceTable;
+
+        TableMetadata targetTable =
+            workItem.TargetTable;
+
+        List<ColumnMetadata> sourcePrimaryKeys =
+            sourceTable.Columns
+                .Where(column => column.IsPrimaryKey)
+                .ToList();
+
+        List<ColumnMetadata> targetPrimaryKeys =
+            targetTable.Columns
+                .Where(column => column.IsPrimaryKey)
+                .ToList();
+
+        string sourceTableName =
+            $"[{sourceTable.Schema}].[{sourceTable.Name}]";
+
+        string targetTableName =
+            $"[{targetTable.Schema}].[{targetTable.Name}]";
+
+        string joinCondition =
+            string.Join(
+                Environment.NewLine +
+                "                AND ",
+                sourcePrimaryKeys.Select(
+                    sourceColumn =>
+                    {
+                        ColumnMetadata targetColumn =
+                            targetPrimaryKeys.First(
+                                column =>
+                                    column.Name.Equals(
+                                        sourceColumn.Name,
+                                        StringComparison.OrdinalIgnoreCase));
+
+                        return
+                            $"S.[{sourceColumn.Name}] = T.[{targetColumn.Name}]";
+                    }));
+
+        /*
+         * Construimos una representación estable de las columnas.
+         *
+         * CONVERT(NVARCHAR(MAX), ...)
+         * permite que HASHBYTES reciba una representación
+         * consistente incluso cuando las columnas tienen
+         * diferentes tipos SQL.
+         */
+        string sourceHashExpression =
+            BuildHashExpression(
+                sourceTable);
+
+        string targetHashExpression =
+            BuildHashExpression(
+                targetTable);
+
+        string sourcePrimaryKeyNull =
+            BuildPrimaryKeyNullCondition(
+                sourcePrimaryKeys,
+                "S");
+
+        string targetPrimaryKeyNull =
+            BuildPrimaryKeyNullCondition(
+                targetPrimaryKeys,
+                "T");
+
+        string tableKey =
+            EscapeSqlLiteral(
+                $"{targetTable.Schema}.{targetTable.Name}");
+
+        return $$"""
+        SELECT
+            N'{{tableKey}}' AS TableName,
+            CASE
+                WHEN EXISTS
+                (
+                    SELECT TOP (1)
+                        1
+                    FROM
+                    (
+                        SELECT
+                            S.*,
+                            {{sourceHashExpression}} AS __RowHash
+                        FROM [{{sourceDatabase}}].{{sourceTableName}} AS S
+                    ) AS S
+                    FULL OUTER JOIN
+                    (
+                        SELECT
+                            T.*,
+                            {{targetHashExpression}} AS __RowHash
+                        FROM [{{targetDatabase}}].{{targetTableName}} AS T
+                    ) AS T
+                        ON {{joinCondition}}
+                    WHERE
+                        {{sourcePrimaryKeyNull}}
+                        OR {{targetPrimaryKeyNull}}
+                        OR S.__RowHash <> T.__RowHash
+                )
+                THEN 1
+                ELSE 0
+            END AS HasDifferences
+        """;
+    }
+
+    private static string BuildHashExpression(
+        TableMetadata table)
+    {
+        IEnumerable<string> expressions =
+            table.Columns
+                .Where(
+                    column =>
+                        !column.IsPrimaryKey &&
+                        !IsNonComparable(column))
+                .Select(
+                    column =>
+                        $"ISNULL(CONVERT(NVARCHAR(MAX), [{column.Name}]), N'<NULL>')");
+
+        string concatenated =
+            string.Join(
+                " + N'|' + ",
+                expressions);
+
+        if (string.IsNullOrWhiteSpace(concatenated))
+        {
+            concatenated = "N''";
+        }
+
+        return
+            $"HASHBYTES('SHA2_256', {concatenated})";
+    }
+
+    private static string BuildPrimaryKeyNullCondition(
+        List<ColumnMetadata> primaryKeys,
+        string alias)
+    {
+        if (primaryKeys.Count == 1)
+        {
+            return
+                $"{alias}.[{primaryKeys[0].Name}] IS NULL";
+        }
+
+        return string.Join(
+            " AND ",
+            primaryKeys.Select(
+                column =>
+                    $"{alias}.[{column.Name}] IS NULL"));
+    }
+
+    private static bool HasPrimaryKey(
+        TableMetadata table)
+    {
+        return table.Columns.Any(
+            column => column.IsPrimaryKey);
+    }
+
+    private static bool HasSamePrimaryKey(
+        TableMetadata sourceTable,
+        TableMetadata targetTable)
+    {
+        List<string> sourceKeys =
+            sourceTable.Columns
+                .Where(column => column.IsPrimaryKey)
+                .Select(column => column.Name)
+                .ToList();
+
+        List<string> targetKeys =
+            targetTable.Columns
+                .Where(column => column.IsPrimaryKey)
+                .Select(column => column.Name)
+                .ToList();
+
+        if (sourceKeys.Count !=
+            targetKeys.Count)
+        {
+            return false;
+        }
+
+        return sourceKeys.SequenceEqual(
+            targetKeys,
+            StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static long GetRecordCount(
+        TableMetadata table)
+    {
+        if (table.Columns.Count == 0)
+        {
+            return 0;
+        }
+
+        return table.Columns[0].RecordCount;
+    }
+
+    private static List<List<TableComparisonWorkItem>> CreateBatches(
+        List<TableComparisonWorkItem> tables,
+        int batchSize)
+    {
+        List<List<TableComparisonWorkItem>> batches = [];
+
+        for (int index = 0;
+             index < tables.Count;
+             index += batchSize)
+        {
+            batches.Add(
+                tables
+                    .Skip(index)
+                    .Take(batchSize)
+                    .ToList());
+        }
+
+        return batches;
     }
 
     private static bool MetadataMatches(
@@ -283,6 +698,23 @@ public sealed class CompareValidationService : ICompareValidationService
                    StringComparison.OrdinalIgnoreCase)
                || column.SqlType.Equals(
                    "ntext",
+                   StringComparison.OrdinalIgnoreCase)
+               || column.SqlType.Equals(
+                   "xml",
                    StringComparison.OrdinalIgnoreCase);
     }
+
+    private static string EscapeSqlLiteral(
+        string value)
+    {
+        return value.Replace(
+            "'",
+            "''",
+            StringComparison.Ordinal);
+    }
+
+    private sealed record TableComparisonWorkItem(
+        TableMetadata SourceTable,
+        TableMetadata TargetTable,
+        long RecordCount);
 }

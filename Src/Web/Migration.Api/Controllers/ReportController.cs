@@ -35,18 +35,6 @@ public sealed class ReportController : ControllerBase
         return Ok(result);
     }
 
-    [HttpPost("validation")]
-    public async Task<IActionResult> CompareValidation(
-        [FromBody] CompareValidationRequestDto dto)
-    {
-        var command = dto.ToCompareValidationCommand();
-
-        var result =
-            await _validationHandler.HandleAsync(command);
-
-        return Ok(result);
-    }
-
     [HttpPost("record-count")]
     public async Task<IActionResult> CompareRecordCount(
         [FromBody] RecordCountRequestDto dto)
@@ -55,6 +43,18 @@ public sealed class ReportController : ControllerBase
 
         var result =
             await _recordCountHandler.HandleAsync(command);
+
+        return Ok(result);
+    }
+
+    [HttpPost("validation")]
+    public async Task<IActionResult> CompareValidation(
+        [FromBody] CompareValidationRequestDto dto)
+    {
+        var command = dto.ToCompareValidationCommand();
+
+        var result =
+            await _validationHandler.HandleAsync(command);
 
         return Ok(result);
     }
