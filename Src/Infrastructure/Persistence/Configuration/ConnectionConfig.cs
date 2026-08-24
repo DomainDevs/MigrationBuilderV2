@@ -14,7 +14,7 @@ public sealed class ConnectionConfig
     public string BuildConnectionStringETL()
     {
         return
-            $"Provider={Provider};" +
+            $"Provider={Driver};" +
             $"Data Source={Server};" +
             $"Initial Catalog={Database};" +
             $"User ID={User};" +
