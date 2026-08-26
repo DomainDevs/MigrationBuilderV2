@@ -1,9 +1,7 @@
 ﻿using Persistence.Execution.Helpers;
 using Persistence.Execution.Log;
 using Persistence.Execution.Models;
-using Persistence.Metadata.Services;
 using Persistence.Migration.Services;
-using Serilog;
 
 namespace Persistence.Execution.Services;
 
@@ -34,90 +32,111 @@ public sealed class PackageExecutor
         ArgumentNullException.ThrowIfNull(package);
         ArgumentNullException.ThrowIfNull(execution);
 
-        //LogWriterJSON writer = new($"{projectPath}\\Logs\\"); //logPath
-
-        /*
         if (!Directory.Exists(packagePath))
         {
-            throw new DirectoryNotFoundException(
-                $"No se encontró el paquete '{packagePath}'.");
-        }
-        */
-
-        if (!Directory.Exists(packagePath))
-        {
-            execution.Status = ExecutionStatus.Completed;
+            execution.Status = ExecutionStatus.Failed;
             execution.StartedAt = DateTime.UtcNow;
             execution.FinishedAt = DateTime.UtcNow;
-            
-            execution.Status = ExecutionStatus.Failed;
-            execution.Error = $"No existe la carpeta del paquete '{packagePath}'. Se omite la ejecución.";
 
-            logs.Add(new LogEntry
+            string mensaje =
+                $"No existe la carpeta del paquete '{packagePath}'. Se omite la ejecución.";
+
+            execution.Error = mensaje;
+
+            LogEntry log = new()
             {
                 Name = package.Package,
                 Start = execution.StartedAt.Value,
                 End = execution.FinishedAt.Value,
                 Ok = false,
-                Msg = $"No existe la carpeta del paquete '{packagePath}'. Se omite la ejecución."
-            });
+                Msg = mensaje
+            };
 
-            plan.Revision = plan.Revision + 1;
+            execution.Logs.Add(log);
+            logs.Add(log);
+
+            plan.Revision++;
+
             int index = plan.Packages.FindIndex(x =>
-            x.Package.Equals(package.Package, StringComparison.OrdinalIgnoreCase));
-            plan.Packages[index].Approved = false;
+                x.Package.Equals(
+                    package.Package,
+                    StringComparison.OrdinalIgnoreCase));
+
+            if (index >= 0)
+                plan.Packages[index].Approved = false;
 
             _migrationPlanService.Save(projectPath, plan);
 
             return;
         }
 
-
         IReadOnlyList<string> artifacts =
             ArtifactDiscovery.Discover(packagePath);
 
-        //Si tiene ETL, retiro los demás artefactos y ejecuto solo el ETL
+        // Si tiene ETL, retiro los demás artefactos y ejecuto solo el ETL.
         if (package.SelfContainedEtl)
         {
             artifacts = artifacts
-                .Where(a => a.EndsWith(".dtsx", StringComparison.OrdinalIgnoreCase))
+                .Where(a =>
+                    a.EndsWith(".dtsx", StringComparison.OrdinalIgnoreCase))
                 .ToList();
         }
         else
         {
-            if (artifacts.Any(a => a.EndsWith(".dtsx", StringComparison.OrdinalIgnoreCase)))
+            if (artifacts.Any(a =>
+                a.EndsWith(".dtsx", StringComparison.OrdinalIgnoreCase)))
             {
                 artifacts = artifacts
                     .Where(a =>
                     {
                         string fileName = Path.GetFileName(a);
 
-                        return fileName.StartsWith("BEGIN_", StringComparison.OrdinalIgnoreCase) ||
-                               fileName.StartsWith("DDL_", StringComparison.OrdinalIgnoreCase) ||
-                               fileName.StartsWith("END_", StringComparison.OrdinalIgnoreCase) ||
-                               a.EndsWith(".dtsx", StringComparison.OrdinalIgnoreCase);
+                        return fileName.StartsWith(
+                                   "BEGIN_",
+                                   StringComparison.OrdinalIgnoreCase)
+                               || fileName.StartsWith(
+                                   "DDL_",
+                                   StringComparison.OrdinalIgnoreCase)
+                               || fileName.StartsWith(
+                                   "END_",
+                                   StringComparison.OrdinalIgnoreCase)
+                               || a.EndsWith(
+                                   ".dtsx",
+                                   StringComparison.OrdinalIgnoreCase);
                     })
                     .ToList();
             }
-            if (!artifacts.Any(a => Path.GetFileName(a).StartsWith("SQL_", StringComparison.OrdinalIgnoreCase)) &&
-                artifacts.Any(a => Path.GetFileName(a).StartsWith("LOCAL_", StringComparison.OrdinalIgnoreCase)))
+
+            if (!artifacts.Any(a =>
+                    Path.GetFileName(a).StartsWith(
+                        "SQL_",
+                        StringComparison.OrdinalIgnoreCase))
+                && artifacts.Any(a =>
+                    Path.GetFileName(a).StartsWith(
+                        "LOCAL_",
+                        StringComparison.OrdinalIgnoreCase)))
             {
                 List<string> ordered = [];
 
                 ordered.AddRange(artifacts.Where(a =>
-                    Path.GetFileName(a).StartsWith("BEGIN_", StringComparison.OrdinalIgnoreCase)));
+                    Path.GetFileName(a).StartsWith(
+                        "BEGIN_",
+                        StringComparison.OrdinalIgnoreCase)));
 
                 ordered.AddRange(artifacts.Where(a =>
-                    Path.GetFileName(a).StartsWith("LOCAL_", StringComparison.OrdinalIgnoreCase)));
+                    Path.GetFileName(a).StartsWith(
+                        "LOCAL_",
+                        StringComparison.OrdinalIgnoreCase)));
 
                 ordered.AddRange(artifacts.Where(a =>
-                    Path.GetFileName(a).StartsWith("END_", StringComparison.OrdinalIgnoreCase)));
+                    Path.GetFileName(a).StartsWith(
+                        "END_",
+                        StringComparison.OrdinalIgnoreCase)));
 
                 artifacts = ordered;
             }
         }
 
-        //Valido si quedan artefactos para ejecutar, si no hay, lanzo excepción
         if (artifacts.Count == 0)
         {
             throw new InvalidOperationException(
@@ -129,7 +148,6 @@ public sealed class PackageExecutor
 
         try
         {
-            //List<LogEntry> logs = [];
             foreach (string artifact in artifacts)
             {
                 LogEntry log = new()
@@ -137,8 +155,9 @@ public sealed class PackageExecutor
                     Name = Path.GetFileName(artifact),
                     Start = DateTime.UtcNow
                 };
-                try 
-                { 
+
+                try
+                {
                     if (execution.Status == ExecutionStatus.Cancelling)
                     {
                         execution.Status = ExecutionStatus.Cancelled;
@@ -149,10 +168,11 @@ public sealed class PackageExecutor
 
                     log.Ok = true;
                     log.Msg = "OK";
-                }catch (Exception ex)
+                }
+                catch (Exception ex)
                 {
                     log.Ok = false;
-                    log.Msg = $"ERROR:{log.Name} - {ex.Message}";
+                    log.Msg = ex.Message;
 
                     throw new InvalidOperationException(
                         $"Error ejecutando '{log.Name}': {ex.Message}",
@@ -161,8 +181,12 @@ public sealed class PackageExecutor
                 finally
                 {
                     log.End = DateTime.UtcNow;
+
+                    // Log asociado al paquete: lo consumirá la Web.
+                    execution.Logs.Add(log);
+
+                    // Log global: lo utilizará LogWriterJSON.
                     logs.Add(log);
-                    //writer.EscribirLog(Path.GetFileNameWithoutExtension(artifact),[log]);
                 }
             }
 

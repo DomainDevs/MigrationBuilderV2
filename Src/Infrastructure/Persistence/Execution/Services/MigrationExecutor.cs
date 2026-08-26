@@ -91,11 +91,8 @@ public sealed class MigrationExecutor : IMigrationExecutor
                 if (!package.Enabled)
                     continue;
                 
-                if(!plan.Reprocess)
-                {
                     if (package.Approved)
                         continue;
-                }
 
 
                 string packagePath =

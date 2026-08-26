@@ -1,4 +1,5 @@
 ﻿using Persistence.Execution.Helpers;
+using Persistence.Execution.Log;
 
 namespace Persistence.Execution.Models;
 
@@ -14,4 +15,6 @@ public sealed class PackageExecution
     public DateTime? FinishedAt { get; set; }
 
     public string? Error { get; set; }
+
+    public List<LogEntry> Logs { get; set; } = [];
 }
