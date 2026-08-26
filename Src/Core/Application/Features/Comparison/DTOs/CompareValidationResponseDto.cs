@@ -11,4 +11,5 @@ public sealed class CompareValidationResponseDto
     public string ElapsedTime { get; init; } = string.Empty;
     public List<string> Differences { get; init; } = [];
     public List<string> Warnings { get; init; } = [];
+    public List<SkippedTableDto> SkippedTables { get; init; } = [];
 }

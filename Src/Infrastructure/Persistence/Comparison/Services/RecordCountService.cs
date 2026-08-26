@@ -22,24 +22,18 @@ internal sealed class RecordCountService : IRecordCountService
         ArgumentException.ThrowIfNullOrWhiteSpace(command.Source);
         ArgumentException.ThrowIfNullOrWhiteSpace(command.Target);
         ArgumentException.ThrowIfNullOrWhiteSpace(command.Schema);
-        ArgumentNullException.ThrowIfNull(command.Tables);
 
         string schema = command.Schema;
 
-        List<string> tables = command.Tables
+        List<string> requestedTables = command.Tables?
             .Where(static table => !string.IsNullOrWhiteSpace(table))
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        if (tables.Count == 0)
-            return [];
+            .ToList()
+            ?? [];
 
         using var source = _database[command.Source].CreateNew();
         using var target = _database[command.Target].CreateNew();
 
-        // Una consulta por base de datos.
-        // Ambas bases se consultan en paralelo, sin generar carga
-        // adicional dentro de cada base.
         Task<Dictionary<string, long>> sourceTask =
             GetRecordCountsAsync(source, schema);
 
@@ -51,7 +45,14 @@ internal sealed class RecordCountService : IRecordCountService
         Dictionary<string, long> sourceCounts = sourceTask.Result;
         Dictionary<string, long> targetCounts = targetTask.Result;
 
-        List<RecordCountResultDto> results = new(tables.Count);
+        IEnumerable<string> tables = requestedTables.Count > 0
+            ? requestedTables
+            : sourceCounts.Keys
+                .Union(
+                    targetCounts.Keys,
+                    StringComparer.OrdinalIgnoreCase);
+
+        List<RecordCountResultDto> results = [];
 
         foreach (string table in tables)
         {
@@ -90,10 +91,10 @@ internal sealed class RecordCountService : IRecordCountService
             SELECT
                 t.name AS TableName,
                 ISNULL(SUM(p.rows), 0) AS TotalRows
-            FROM sys.tables t
-            INNER JOIN sys.schemas s
+            FROM sys.tables AS t
+            INNER JOIN sys.schemas AS s
                 ON s.schema_id = t.schema_id
-            INNER JOIN sys.partitions p
+            INNER JOIN sys.partitions AS p
                 ON p.object_id = t.object_id
             WHERE s.name = @Schema
               AND p.index_id IN (0, 1)
@@ -108,7 +109,8 @@ internal sealed class RecordCountService : IRecordCountService
         var queryResults =
             await database.Sql.FromSqlAsync<TableCountRawResult>(
                 sql,
-                parameters);
+                parameters,
+                commandTimeout: 1500);
 
         return queryResults.ToDictionary(
             static x => x.TableName,

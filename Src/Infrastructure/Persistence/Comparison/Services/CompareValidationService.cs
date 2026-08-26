@@ -72,6 +72,7 @@ public sealed class CompareValidationService : ICompareValidationService
 
         List<string> differences = [];
         List<string> warnings = [];
+        List<SkippedTableDto> skippedTables = [];
 
         Task<List<TableMetadata>> sourceTask =
             _metadataService.ExtractMetadataAsync(
@@ -129,6 +130,8 @@ public sealed class CompareValidationService : ICompareValidationService
 
         List<TableComparisonWorkItem> comparisonTables = [];
 
+        int validatedCount = 0;
+
         foreach (TableMetadata targetTable in targetMetadata)
         {
             string tableKey =
@@ -173,9 +176,41 @@ public sealed class CompareValidationService : ICompareValidationService
                 GetRecordCount(targetTable);
 
             /*
-             * El Count ya forma parte del metadata.
+             * Las tablas grandes no participan en la comparación
+             * normal. Se registran explícitamente como omitidas.
              *
-             * Si es diferente, no necesitamos leer los datos.
+             * Se evalúan ambos lados porque cualquiera de las dos
+             * bases puede superar el límite.
+             */
+            if (sourceRecordCount > LargeTableRecordCountThreshold ||
+                targetRecordCount > LargeTableRecordCountThreshold)
+            {
+                skippedTables.Add(
+                    new SkippedTableDto
+                    {
+                        Table = tableKey,
+                        SourceRecords = sourceRecordCount,
+                        TargetRecords = targetRecordCount,
+                        Reason = "TABLE_TOO_LARGE",
+                        Message =
+                            $"La tabla supera el límite de " +
+                            $"{LargeTableRecordCountThreshold:N0} registros. " +
+                            "Debe ejecutarse una validación independiente."
+                    });
+
+                continue;
+            }
+
+            /*
+             * A partir de aquí la tabla sí fue validada.
+             *
+             * El conteo ya forma parte del metadata.
+             */
+            validatedCount++;
+
+            /*
+             * Si la cantidad de registros es diferente,
+             * no necesitamos leer los datos.
              */
             if (sourceRecordCount != targetRecordCount)
             {
@@ -185,6 +220,7 @@ public sealed class CompareValidationService : ICompareValidationService
 
             /*
              * Ambas tablas están vacías.
+             * Ya fueron validadas por metadata y conteo.
              */
             if (sourceRecordCount == 0)
             {
@@ -197,10 +233,6 @@ public sealed class CompareValidationService : ICompareValidationService
                     targetTable,
                     sourceRecordCount));
         }
-
-        int validatedCount =
-            comparisonTables.Count +
-            differences.Count;
 
         if (comparisonTables.Count > 0)
         {
@@ -239,6 +271,11 @@ public sealed class CompareValidationService : ICompareValidationService
         differences.Sort(
             StringComparer.OrdinalIgnoreCase);
 
+        skippedTables.Sort(
+            static (x, y) =>
+                y.SourceRecords
+                    .CompareTo(x.SourceRecords));
+
         stopwatch.Stop();
 
         return new CompareValidationResponseDto
@@ -251,7 +288,8 @@ public sealed class CompareValidationService : ICompareValidationService
             ElapsedMilliseconds = stopwatch.ElapsedMilliseconds,
             ElapsedTime = stopwatch.Elapsed.ToString(@"hh\:mm\:ss\.fff"),
             Differences = differences,
-            Warnings = warnings
+            Warnings = warnings,
+            SkippedTables = skippedTables
         };
     }
 
@@ -273,8 +311,6 @@ public sealed class CompareValidationService : ICompareValidationService
                     targetDatabase);
 
             /*
-             * IMPORTANTE:
-             *
              * targetConnection es el alias configurado,
              * no necesariamente el nombre físico de la BD.
              */
@@ -326,10 +362,6 @@ public sealed class CompareValidationService : ICompareValidationService
         {
             string query;
 
-            bool isLargeTable =
-                workItem.RecordCount >
-                LargeTableRecordCountThreshold;
-
             bool hasPrimaryKey =
                 HasPrimaryKey(
                     workItem.SourceTable);
@@ -338,6 +370,17 @@ public sealed class CompareValidationService : ICompareValidationService
                 HasSamePrimaryKey(
                     workItem.SourceTable,
                     workItem.TargetTable);
+
+            /*
+             * Las tablas grandes ya fueron filtradas antes
+             * de llegar aquí.
+             *
+             * Por seguridad mantenemos la estrategia especial
+             * para tablas que eventualmente superen el límite.
+             */
+            bool isLargeTable =
+                workItem.RecordCount >
+                LargeTableRecordCountThreshold;
 
             if (isLargeTable &&
                 hasPrimaryKey &&
@@ -464,14 +507,6 @@ public sealed class CompareValidationService : ICompareValidationService
                             $"S.[{sourceColumn.Name}] = T.[{targetColumn.Name}]";
                     }));
 
-        /*
-         * Construimos una representación estable de las columnas.
-         *
-         * CONVERT(NVARCHAR(MAX), ...)
-         * permite que HASHBYTES reciba una representación
-         * consistente incluso cuando las columnas tienen
-         * diferentes tipos SQL.
-         */
         string sourceHashExpression =
             BuildHashExpression(
                 sourceTable);
