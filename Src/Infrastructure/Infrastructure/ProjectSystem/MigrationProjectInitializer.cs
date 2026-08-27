@@ -34,6 +34,7 @@ public sealed class MigrationProjectInitializer : IMigrationProjectInitializer
             .AddDirectory(root)
             .AddDirectory(Path.Combine(projectPath, _options.Folders.MigrationTask))
             .AddDirectory(Path.Combine(projectPath, _options.Folders.Logs))
+            .AddDirectory(Path.Combine(projectPath, _options.Folders.Reports))
 
             .AddFile(
                 //@"D:\Migration\desktop.ini",

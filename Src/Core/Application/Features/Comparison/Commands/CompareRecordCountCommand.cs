@@ -4,6 +4,7 @@ using MediatR;
 namespace Application.Features.Comparison.Commands;
 
 public sealed record CompareRecordCountCommand(
+    string? ProjectName,
     string Source,
     string Target,
     string? Schema,

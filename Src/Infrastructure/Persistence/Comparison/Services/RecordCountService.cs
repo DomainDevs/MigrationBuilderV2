@@ -3,12 +3,17 @@ using Application.Features.Comparison.Commands;
 using Application.Features.Comparison.DTOs;
 using DataToolkit.Library.Connections.Context;
 using DataToolkit.Library.UnitOfWorkLayer;
+using Persistence.Migration.Services;
+using Shared.Options;
+using System.Text.Json;
 
 namespace Persistence.Comparison.Services;
 
 internal sealed class RecordCountService : IRecordCountService
 {
     private readonly IDatabaseContext _database;
+    private readonly MigrationOptions _options;
+
 
     public RecordCountService(IDatabaseContext database)
     {
@@ -25,11 +30,20 @@ internal sealed class RecordCountService : IRecordCountService
 
         string schema = command.Schema;
 
-        List<string> requestedTables = command.Tables?
+        List<string> requestedTables;
+
+        requestedTables = command.Tables?
             .Where(static table => !string.IsNullOrWhiteSpace(table))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList()
             ?? [];
+
+        if (requestedTables.Count == 0 &&
+            !string.IsNullOrWhiteSpace(command.ProjectName))
+        {
+            requestedTables =
+                ObtenerTablasDelMigrationPlan(command.ProjectName);
+        }
 
         using var source = _database[command.Source].CreateNew();
         using var target = _database[command.Target].CreateNew();
@@ -122,5 +136,44 @@ internal sealed class RecordCountService : IRecordCountService
     {
         public string TableName { get; set; } = string.Empty;
         public long TotalRows { get; set; }
+    }
+
+    private List<string> ObtenerTablasDelMigrationPlan(
+        string projectName)
+    {
+        string projectPath =
+            Path.Combine(
+                _options.Folders.Root,
+                projectName);
+
+        string planPath =
+            Path.Combine(
+                projectPath,
+                "MigrationPlan.json");
+
+        if (!File.Exists(planPath))
+        {
+            throw new FileNotFoundException(
+                $"No se encontró el MigrationPlan.json del proyecto '{projectName}'.",
+                planPath);
+        }
+
+        string json = File.ReadAllText(planPath);
+
+        MigrationPlan? plan =
+            JsonSerializer.Deserialize<MigrationPlan>(json);
+
+        if (plan is null)
+        {
+            throw new InvalidOperationException(
+                $"No se pudo leer el MigrationPlan del proyecto '{projectName}'.");
+        }
+
+        return plan.Packages
+            .Where(static x => x.Enabled)
+            .Select(static x => x.Package)
+            .Where(static x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 }

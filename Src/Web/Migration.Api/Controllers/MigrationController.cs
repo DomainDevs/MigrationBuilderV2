@@ -114,6 +114,7 @@ public class MigrationController : ControllerBase
         return Ok(ApiResponse.Success(result, "Script de carga generado correctamente"));
     }
 
+    /*
     // =====================================
     // POST: api/Migration/validation
     // =====================================
@@ -146,7 +147,6 @@ public class MigrationController : ControllerBase
                 "Script de validación generado correctamente"));
     }
 
-    /*
     // =====================================
     // POST: api/Migration/execution
     // =====================================
