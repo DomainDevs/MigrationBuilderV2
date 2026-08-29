@@ -1,6 +1,6 @@
 ﻿using Application.Abstractions.Execution;
 using Application.Features.Orchestrator.Commands;
-using Application.Features.Orchestrator.DTOs;
+using Application.Features.Orchestrator.DTOs.Responses;
 using Microsoft.Extensions.Options;
 using Persistence.Execution.Helpers;
 using Persistence.Execution.Log;
@@ -27,21 +27,21 @@ public sealed class MigrationExecutor : IMigrationExecutor
     }
 
     public async Task<MigrationExecuteResponse> ExecuteAsync(
-        MigrationExecuteCommand command
-        )
+        MigrationExecuteCommand command,
+        CancellationToken cancellationToken)
     {
         string projectPath = command.ProjectName;
         List<LogEntry> logs = [];
 
         command.Packages.RemoveAll(x =>
-        string.Equals(x, "string", StringComparison.OrdinalIgnoreCase));
+            string.Equals(x, "string", StringComparison.OrdinalIgnoreCase));
 
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
 
-        //ruta fisica
         projectPath =
             Path.Combine(
-                _options.Folders.Root, projectPath);
+                _options.Folders.Root,
+                projectPath);
 
         if (!Directory.Exists(projectPath))
         {
@@ -49,7 +49,8 @@ public sealed class MigrationExecutor : IMigrationExecutor
                 $"El proyecto '{command.ProjectName}', no se encuentra registrado.");
         }
 
-        LogWriterJSON writer = new($"{projectPath}\\{_options.Folders.Logs}\\"); 
+        LogWriterJSON writer =
+            new($"{projectPath}\\{_options.Folders.Logs}\\");
 
         MigrationPlan plan =
             _migrationPlanService.Load(projectPath);
@@ -59,7 +60,6 @@ public sealed class MigrationExecutor : IMigrationExecutor
         IReadOnlyList<MigrationStage> stages =
             _migrationPlanService.GetStages(plan);
 
-        //Filtrar por paquetes seleccionados si se proporcionan en el comando
         if (command.Packages.Count > 0)
         {
             stages = stages
@@ -84,20 +84,22 @@ public sealed class MigrationExecutor : IMigrationExecutor
 
         foreach (MigrationStage stage in stages.OrderBy(s => s.Stage))
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             List<Task> tasks = [];
 
             foreach (MigrationPackage package in stage.Packages)
             {
                 if (!package.Enabled)
                     continue;
-                
-                    if (package.Approved)
-                        continue;
 
+                if (package.Approved)
+                    continue;
 
                 string packagePath =
                     Path.Combine(
-                        Path.Combine(projectPath, _options.Folders.MigrationTask),
+                        projectPath,
+                        _options.Folders.MigrationTask,
                         package.Package);
 
                 PackageExecution packageExecution = new()
@@ -114,21 +116,20 @@ public sealed class MigrationExecutor : IMigrationExecutor
                         plan,
                         package,
                         packageExecution,
-                        logs
-                        )
-                    );
-                if (packageExecution.Status == ExecutionStatus.Failed)
-                    package.Approved = false;
+                        logs));
             }
+
             await Task.WhenAll(tasks);
         }
 
-        writer.EscribirLog($"{projectPath}\\{_options.Folders.Logs}\\", logs);
+        writer.EscribirLog(
+            $"{projectPath}\\{_options.Folders.Logs}\\",
+            logs);
 
         return new MigrationExecuteResponse
         {
             Packages = execution.Packages
-                .Select(x => new PackageExecutionDto
+                .Select(x => new PackageExecutionResponse
                 {
                     Package = x.Package,
                     Status = x.Status.ToString()

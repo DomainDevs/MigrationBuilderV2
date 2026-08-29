@@ -5,21 +5,24 @@ namespace Persistence.Migration.Builders;
 internal static class BeginEndBuilder
 {
     #region BuildBegin
+
     public static void BuildBegin(
         string artifactFolder,
         string artifactPrefix,
         string schema,
         string tableName)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(artifactFolder);
-        ArgumentException.ThrowIfNullOrWhiteSpace(artifactPrefix);
-        ArgumentException.ThrowIfNullOrWhiteSpace(schema);
-        ArgumentException.ThrowIfNullOrWhiteSpace(tableName);
+        ValidateArguments(
+            artifactFolder,
+            artifactPrefix,
+            schema,
+            tableName);
 
         string packagePath =
-            Path.Combine(
+            BuildPackagePath(
                 artifactFolder,
-                $"{schema}.{tableName}");
+                schema,
+                tableName);
 
         Directory.CreateDirectory(packagePath);
 
@@ -28,58 +31,17 @@ internal static class BeginEndBuilder
                 packagePath,
                 $"BEGIN_{schema}.{artifactPrefix}_{tableName}.sql");
 
-        var sql = new StringBuilder();
+        string sql =
+            BuildBeginScript(
+                artifactPrefix,
+                schema,
+                tableName);
 
-        sql.AppendLine("/*");
-        sql.AppendLine($"    Package  : {schema}.{tableName}");
-        sql.AppendLine("    Artifact : BEGIN");
-        sql.AppendLine("*/");
-        sql.AppendLine();
-
-        sql.AppendLine("-- ===========================================================");
-        sql.AppendLine("-- Preparación de la migración");
-        sql.AppendLine("-- Descomente únicamente las instrucciones necesarias.");
-        sql.AppendLine("-- ===========================================================");
-        sql.AppendLine();
-
-        sql.AppendLine("-- Deshabilitar restricciones");
-        sql.AppendLine(
-            $"-- ALTER TABLE [{schema}].[{tableName}] NOCHECK CONSTRAINT ALL;");
-        sql.AppendLine();
-
-        sql.AppendLine("-- Deshabilitar triggers");
-        sql.AppendLine(
-            $"-- DISABLE TRIGGER ALL ON [{schema}].[{tableName}];");
-        sql.AppendLine();
-
-        int deleteBatchSize =
-            artifactPrefix.Equals(
-                "WF",
-                StringComparison.OrdinalIgnoreCase)
-                ? 6000
-                : 4000;
-
-        sql.AppendLine("-- Limpiar tabla de destino");
-        sql.AppendLine("SET NOCOUNT ON;");
-        sql.AppendLine("WHILE 1 = 1");
-        sql.AppendLine("BEGIN");
-        sql.AppendLine($"    DELETE TOP ({deleteBatchSize})");
-        sql.AppendLine($"    FROM [{schema}].[{tableName}];");
-        sql.AppendLine();
-        sql.AppendLine("    IF @@ROWCOUNT = 0");
-        sql.AppendLine("        BREAK;");
-        sql.AppendLine("END;");
-        sql.AppendLine();
-
-        sql.AppendLine("-- Permitir insertar valores Identity");
-        sql.AppendLine(
-            $"-- SET IDENTITY_INSERT [{schema}].[{tableName}] ON;");
-
-        File.WriteAllText(
+        WriteFile(
             filePath,
-            sql.ToString(),
-            Encoding.UTF8);
+            sql);
     }
+
     #endregion
 
     #region BuildEnd
@@ -89,15 +51,17 @@ internal static class BeginEndBuilder
         string schema,
         string tableName)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(artifactFolder);
-        ArgumentException.ThrowIfNullOrWhiteSpace(artifactPrefix);
-        ArgumentException.ThrowIfNullOrWhiteSpace(schema);
-        ArgumentException.ThrowIfNullOrWhiteSpace(tableName);
+        ValidateArguments(
+            artifactFolder,
+            artifactPrefix,
+            schema,
+            tableName);
 
         string packagePath =
-            Path.Combine(
+            BuildPackagePath(
                 artifactFolder,
-                $"{schema}.{tableName}");
+                schema,
+                tableName);
 
         Directory.CreateDirectory(packagePath);
 
@@ -106,68 +70,199 @@ internal static class BeginEndBuilder
                 packagePath,
                 $"END_{schema}.{artifactPrefix}_{tableName}.sql");
 
-        var sql = new StringBuilder();
+        string sql =
+            BuildEndScript(
+                artifactPrefix,
+                schema,
+                tableName);
 
-        sql.AppendLine("/*");
-        sql.AppendLine($"    Package  : {schema}.{tableName}");
-        sql.AppendLine("    Artifact : END");
-        sql.AppendLine("*/");
-        sql.AppendLine();
+        WriteFile(
+            filePath,
+            sql);
+    }
+    #endregion
 
-        sql.AppendLine("-- ===========================================================");
-        sql.AppendLine("-- Finalización de la migración");
-        sql.AppendLine("-- Descomente únicamente las instrucciones necesarias.");
-        sql.AppendLine("-- ===========================================================");
-        sql.AppendLine();
+    #region BuildBeginScript
 
-        // La STG es temporal y puede ocupar mucho espacio.
-        // Se elimina inmediatamente después de completar el LOAD.
-        sql.AppendLine("-- Eliminar tabla de trabajo");
-        sql.AppendLine(
-            $"IF OBJECT_ID(N'[{schema}].[{artifactPrefix}_{tableName}]', N'U') IS NOT NULL");
-        sql.AppendLine("BEGIN");
-        sql.AppendLine(
-            $"    DROP TABLE [{schema}].[{artifactPrefix}_{tableName}];");
-        sql.AppendLine("END");
-        sql.AppendLine();
+    private static string BuildBeginScript(
+        string artifactPrefix,
+        string schema,
+        string tableName)
+    {
+        Boolean isIntegration = false;
+        if (artifactPrefix == "INT")
+        {
+            isIntegration = true;
+        }
 
-        sql.AppendLine("-- Deshabilitar Identity Insert");
-        sql.AppendLine(
-            $"-- SET IDENTITY_INSERT [{schema}].[{tableName}] OFF;");
-        sql.AppendLine();
+        int deleteBatchSize =
+            artifactPrefix.Equals(
+                "WF",
+                StringComparison.OrdinalIgnoreCase)
+                ? 6000
+                : 4000;
 
-        sql.AppendLine("-- Habilitar triggers");
-        sql.AppendLine(
-            $"-- ENABLE TRIGGER ALL ON [{schema}].[{tableName}];");
-        sql.AppendLine();
+        if (isIntegration)
+        {
+            return
+$"""
+/*
+    Package  : {schema}.{tableName}
+    GENERATED BY Sistran.MigrationBuilder
+    Artifact : BEGIN
+*/
+                
+-- ===========================================================
+-- Preparación de la migración
+-- Descomente únicamente las instrucciones necesarias.
+-- ===========================================================
+""";
 
-        sql.AppendLine("-- Habilitar restricciones");
-        sql.AppendLine(
-            $"-- ALTER TABLE [{schema}].[{tableName}] WITH CHECK CHECK CONSTRAINT ALL;");
-        sql.AppendLine();
+        }
 
-        sql.AppendLine("-- Reconstruir índices");
-        sql.AppendLine(
-            $"ALTER INDEX ALL ON [{schema}].[{tableName}] REBUILD WITH " +
-            "(PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, " +
-            "SORT_IN_TEMPDB = OFF, ONLINE = OFF, " +
-            "ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON);");
-        sql.AppendLine();
+        return
+$"""
+/*
+    Package  : {schema}.{tableName}
+    GENERATED BY Sistran.MigrationBuilder
+    Artifact : BEGIN
+*/
 
-        sql.AppendLine("-- Actualizar estadísticas");
-        sql.AppendLine(
-            $"UPDATE STATISTICS [{schema}].[{tableName}];");
-        sql.AppendLine();
+-- ===========================================================
+-- Preparación de la migración
+-- Descomente únicamente las instrucciones necesarias.
+-- ===========================================================
 
-        sql.AppendLine("-- Verificar integridad de la tabla");
-        sql.AppendLine(
-            $"DBCC CHECKTABLE ('[{schema}].[{tableName}]');");
-        sql.AppendLine();
+-- Deshabilitar restricciones
+-- ALTER TABLE [{schema}].[{tableName}] NOCHECK CONSTRAINT ALL;
 
+-- Deshabilitar triggers
+-- DISABLE TRIGGER ALL ON [{schema}].[{tableName}];
+
+-- Limpiar tabla de destino
+SET NOCOUNT ON;
+WHILE 1 = 1
+BEGIN
+    DELETE TOP ({deleteBatchSize})
+    FROM [{schema}].[{tableName}];
+
+    IF @@ROWCOUNT = 0
+        BREAK;
+END;
+
+-- Permitir insertar valores Identity
+-- SET IDENTITY_INSERT [{schema}].[{tableName}] ON;
+""";
+    }
+
+    #endregion
+
+    #region BuildEndScript
+    private static string BuildEndScript(
+        string artifactPrefix,
+        string schema,
+        string tableName)
+    {
+        if (artifactPrefix == "INT")
+        {
+            return
+$"""
+/*
+    Package  : {schema}.{tableName}
+    Artifact : END
+*/
+
+-- ===========================================================
+-- Finalización de la integración
+-- Descomente únicamente las instrucciones necesarias.
+-- ===========================================================
+""";
+        }
+
+        return
+$"""
+/*
+    Package  : {schema}.{tableName}
+    Artifact : END
+*/
+
+-- ===========================================================
+-- Finalización de la migración
+-- Descomente únicamente las instrucciones necesarias.
+-- ===========================================================
+
+-- Eliminar tabla de trabajo
+IF OBJECT_ID(N'[{schema}].[{artifactPrefix}_{tableName}]', N'U') IS NOT NULL
+BEGIN
+    DROP TABLE [{schema}].[{artifactPrefix}_{tableName}];
+END
+
+-- Deshabilitar Identity Insert
+-- SET IDENTITY_INSERT [{schema}].[{tableName}] OFF;
+
+-- Habilitar triggers
+-- ENABLE TRIGGER ALL ON [{schema}].[{tableName}];
+
+-- Habilitar restricciones
+-- ALTER TABLE [{schema}].[{tableName}] WITH CHECK CHECK CONSTRAINT ALL;
+
+-- Actualizar estadísticas
+UPDATE STATISTICS [{schema}].[{tableName}];
+
+-- Verificar integridad de la tabla
+DBCC CHECKTABLE ('[{schema}].[{tableName}]');
+""";
+    }
+    #endregion
+
+    #region BuildPackagePath
+
+    private static string BuildPackagePath(
+        string artifactFolder,
+        string schema,
+        string tableName)
+    {
+        return Path.Combine(
+            artifactFolder,
+            $"{schema}.{tableName}");
+    }
+
+    #endregion
+
+    #region ValidateArguments
+
+    private static void ValidateArguments(
+        string artifactFolder,
+        string artifactPrefix,
+        string schema,
+        string tableName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(
+            artifactFolder);
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(
+            artifactPrefix);
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(
+            schema);
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(
+            tableName);
+    }
+
+    #endregion
+
+    #region WriteFile
+
+    private static void WriteFile(
+        string filePath,
+        string content)
+    {
         File.WriteAllText(
             filePath,
-            sql.ToString(),
+            content,
             Encoding.UTF8);
     }
+
     #endregion
 }

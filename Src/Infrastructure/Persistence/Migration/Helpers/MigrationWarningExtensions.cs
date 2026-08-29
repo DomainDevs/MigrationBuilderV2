@@ -5,6 +5,21 @@ namespace Persistence.Migration.Helpers;
 
 internal static class MigrationWarningExtensions
 {
+    public static string GetArtifactPrefix(ArtifactType artifactType)
+    {
+        return artifactType switch
+        {
+            ArtifactType.WorkFile => "WF",
+            ArtifactType.Staging => "STG",
+            ArtifactType.Transformation => "HM",
+            ArtifactType.Integration => "INT",
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(artifactType),
+                artifactType,
+                "Tipo de artifact no soportado.")
+        };
+    }
+
     public static string GetMessage(
         this MigrationWarning warning)
     {

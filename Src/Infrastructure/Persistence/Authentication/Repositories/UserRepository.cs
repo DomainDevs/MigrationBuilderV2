@@ -60,4 +60,31 @@ public sealed class UserRepository : IUserRepository
 
         return _repository.DeleteAsync(entity);
     }
+
+    public async Task<User?> GetByUserNameAsync(
+        string userName)
+    {
+        const string sql =
+            """
+            SELECT
+                [id_user],
+                [password_hash]
+            FROM [tuser]
+            WHERE [user_name] = @UserName
+              AND [enabled] = 1;
+            """;
+
+        IEnumerable<User> users =
+            await _database["Workspace"]
+                .Sql
+                .FromSqlAsync<User>(
+                    sql,
+                    new
+                    {
+                        UserName = userName
+                    });
+
+        return users.FirstOrDefault();
+    }
 }
+

@@ -17,7 +17,9 @@ public sealed class CompareValidationService : ICompareValidationService
     private const long LargeTableRecordCountThreshold = 10_000_000;
     private const int ComparisonBatchSize = 100;
     private const int MaxConcurrentBatches = 2;
-    private const int CommandTimeout = 1600;
+    private const int DefaultCommandTimeout = 1600;
+    private int iCommandTimeoutSrc = 0;
+    private int iCommandTimeoutTrg = 0;
 
     private readonly MetadataService _metadataService;
     private readonly MigrationOptions _options;
@@ -60,6 +62,16 @@ public sealed class CompareValidationService : ICompareValidationService
             _configuration[$"Connections:{command.Target}:Server"]
             ?? throw new InvalidOperationException(
                 $"No se encontró la configuración Connections:{command.Target}:Server.");
+
+        iCommandTimeoutSrc =
+            _configuration.GetValue<int>($"Connections:{command.Source}:TimeOut");
+        iCommandTimeoutTrg =
+            _configuration.GetValue<int>($"Connections:{command.Target}:TimeOut");
+
+        if (iCommandTimeoutSrc <= 0)
+            iCommandTimeoutSrc = DefaultCommandTimeout;
+        if (iCommandTimeoutTrg <= 0)
+            iCommandTimeoutTrg = DefaultCommandTimeout;
 
         if (!string.Equals(
                 strSourceServer,
@@ -164,7 +176,7 @@ public sealed class CompareValidationService : ICompareValidationService
             {
                 warnings.Add(
                     $"La tabla '{tableKey}' no se pudo comparar " +
-                    "porque contiene columnas no comparables.");
+                    "porque contiene columnas no comparables de tipo [IMAGE]");
 
                 continue;
             }
@@ -320,7 +332,7 @@ public sealed class CompareValidationService : ICompareValidationService
             IEnumerable<IDictionary<string, object>> rows =
                 await target.Sql.FromSqlDictionaryAsync(
                     sql,
-                    commandTimeout: CommandTimeout);
+                    commandTimeout: iCommandTimeoutTrg); //iCommandTimeoutSrc o iCommandTimeoutTrg
 
             List<string> differences = [];
 
@@ -422,11 +434,19 @@ public sealed class CompareValidationService : ICompareValidationService
         string tableName =
             $"[{table.Schema}].[{table.Name}]";
 
+        /*
         string columnList =
             string.Join(
                 ", ",
                 table.Columns.Select(
                     column => $"[{column.Name}]"));
+        */
+        string columnList =
+            string.Join(
+                ", ",
+                table.Columns
+                    .Where(column => !IsExcludedComparisonColumn(column))
+                    .Select(column => $"[{column.Name}]"));
 
         string tableKey =
             EscapeSqlLiteral(
@@ -710,6 +730,20 @@ public sealed class CompareValidationService : ICompareValidationService
 
         return sourceColumns.SetEquals(
             targetColumns);
+    }
+
+    private static bool IsExcludedComparisonColumn(
+        ColumnMetadata column)
+    {
+        return column.SqlType.Equals(
+                   "image",
+                   StringComparison.OrdinalIgnoreCase)
+               || column.SqlType.Equals(
+                   "text",
+                   StringComparison.OrdinalIgnoreCase)
+               || column.SqlType.Equals(
+                   "ntext",
+                   StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool HasNonComparableColumns(

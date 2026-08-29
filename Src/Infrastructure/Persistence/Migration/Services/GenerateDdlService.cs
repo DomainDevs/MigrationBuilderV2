@@ -7,6 +7,7 @@ using Domain.Enums;
 using Microsoft.Extensions.Options;
 using Persistence.Metadata.Services;
 using Persistence.Migration.Builders;
+using Persistence.Migration.Helpers;
 using Persistence.Migration.Metadata;
 using Shared.Options;
 
@@ -51,10 +52,8 @@ public sealed class GenerateDdlService : IGenerateDdlService
                 projectPath,
                 _options.Folders.MigrationTask);
 
-        string artifactPrefix =
-            command.ArtifactType == ArtifactType.WorkFile
-                ? "WF"
-                : "STG";
+        string artifactPrefix = MigrationWarningExtensions.GetArtifactPrefix(command.ArtifactType);
+        //string artifactPrefix = command.ArtifactType == ArtifactType.WorkFile? "WF": "STG";
 
         List<string> generatedFiles = [];
         List<string> warnings = [];

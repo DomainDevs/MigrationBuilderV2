@@ -7,7 +7,8 @@ internal static class MetadataQueries
     public static Task<IEnumerable<IDictionary<string, object>>> GetMetadataAsync(
         IUnitOfWork unitOfWork,
         string? schema = null,
-        List<string>? tables = null)
+        List<string>? tables = null, 
+        int iCommandTimeout = 300)
     {
         ArgumentNullException.ThrowIfNull(unitOfWork);
 
@@ -199,6 +200,6 @@ internal static class MetadataQueries
             parameters.Count == 0
                 ? null
                 : parameters,
-            commandTimeout: 120);
+            commandTimeout: iCommandTimeout);
     }
 }

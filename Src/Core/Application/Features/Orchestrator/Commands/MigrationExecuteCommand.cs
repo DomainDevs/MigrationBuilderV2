@@ -1,4 +1,4 @@
-﻿using Application.Features.Orchestrator.DTOs;
+﻿using Application.Features.Orchestrator.DTOs.Responses;
 using MediatR;
 using System.ComponentModel;
 
@@ -9,5 +9,10 @@ public sealed record MigrationExecuteCommand
 {
     [DefaultValue("Master")]
     public required string ProjectName { get; init; } = string.Empty;
+
+    public List<MigrationParameter> Parameters { get; init; } = [];
+
     public List<string> Packages { get; init; } = [];
+
+    
 }

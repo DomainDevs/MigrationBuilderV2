@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Persistence.Metadata.Services;
 using Persistence.Migration.Builders;
+using Persistence.Migration.Helpers;
 using Persistence.Migration.Metadata;
 using Shared.Options;
 
@@ -53,10 +54,8 @@ public sealed class GenerateValidationService : IGenerateValidationService
                 $"El directorio de tareas de migración '{outputFolder}' no existe.");
         }
 
-        string artifactPrefix =
-            command.ArtifactType == ArtifactType.WorkFile
-                ? "WF"
-                : "STG";
+        string artifactPrefix = MigrationWarningExtensions.GetArtifactPrefix(command.ArtifactType);
+        //string artifactPrefix = command.ArtifactType == ArtifactType.WorkFile? "WF": "STG";
 
         string strSource =
             _configuration[$"Connections:{command.Source}:Database"]

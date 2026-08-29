@@ -1,5 +1,6 @@
-﻿using Application.Features.Orchestrator.Commands;
-using Application.Features.Orchestrator.DTOs;
+﻿using Application.Features.Orchestrator.DTOs.Requests;
+using Application.Features.Orchestrator.DTOs.Responses;
+using Application.Features.Orchestrator.Mappers;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,11 +21,11 @@ public sealed class OrchestratorController : ControllerBase
     [HttpPost("execute")]
     [ProducesResponseType(typeof(MigrationExecuteResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<MigrationExecuteResponse>> ExecuteAsync(
-        [FromBody] MigrationExecuteCommand command)
+        [FromBody] MigrationExecuteRequest request)
     {
-
         MigrationExecuteResponse response =
-            await _mediator.Send(command);
+            await _mediator.Send(
+                request.ToCommand());
 
         return Ok(response);
     }

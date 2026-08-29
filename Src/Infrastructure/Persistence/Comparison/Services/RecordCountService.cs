@@ -14,7 +14,6 @@ internal sealed class RecordCountService : IRecordCountService
     private readonly IDatabaseContext _database;
     private readonly MigrationOptions _options;
 
-
     public RecordCountService(IDatabaseContext database)
     {
         _database = database;

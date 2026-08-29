@@ -1,6 +1,6 @@
 ﻿using Application.Abstractions.Execution;
 using Application.Features.Orchestrator.Commands;
-using Application.Features.Orchestrator.DTOs;
+using Application.Features.Orchestrator.DTOs.Responses;
 using MediatR;
 
 namespace Application.Features.Orchestrator.Handlers;
@@ -29,7 +29,9 @@ public sealed class MigrationExecuteHandler
 
         try
         {
-            return await _migrationExecutor.ExecuteAsync(request);
+            return await _migrationExecutor.ExecuteAsync(
+                request,
+                cancellationToken);
         }
         finally
         {

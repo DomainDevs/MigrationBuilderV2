@@ -1,17 +1,25 @@
 ﻿using DataToolkit.Library;
 using DataToolkit.Library.Connections.Context;
 using DataToolkit.Library.UnitOfWorkLayer;
+using Microsoft.Extensions.Configuration;
 using Persistence.Metadata.Queries;
 
 namespace Persistence.Metadata.Services;
 
 public sealed class MetadataService
 {
-    private readonly IDatabaseContext _database;
+    private const int DefaultCommandTimeout = 300;
+    private const int MetadataBatchSize = 500;
 
-    public MetadataService(IDatabaseContext database)
+    private readonly IDatabaseContext _database;
+    private readonly IConfiguration _configuration;
+
+    public MetadataService(
+        IDatabaseContext database,
+        IConfiguration configuration)
     {
         _database = database;
+        _configuration = configuration;
     }
 
     public async Task<List<TableMetadata>> ExtractMetadataAsync(
@@ -24,22 +32,96 @@ public sealed class MetadataService
         using IUnitOfWork unitOfWork =
             _database[database].CreateNew();
 
-        IEnumerable<IDictionary<string, object>> rows =
-            await MetadataQueries.GetMetadataAsync(
-                unitOfWork,
-                schema,
-                tables);
+        int commandTimeout =
+            _configuration.GetValue<int>(
+                $"Connections:{database}:TimeOut");
 
+        if (commandTimeout <= 0)
+            commandTimeout = DefaultCommandTimeout;
+
+        /*
+         * Cuando no se especifican tablas, MetadataQueries obtiene
+         * directamente todo el metadata del schema mediante @Schema.
+         *
+         * Cuando se especifican tablas, no se envía la lista completa
+         * a SQL Server. Se divide en bloques de 500 tablas para evitar
+         * superar el límite de 2100 parámetros de SQL Server.
+         *
+         * El resultado de cada bloque se acumula en el mismo diccionario.
+         */
         Dictionary<string, TableMetadata> metadata =
             new(StringComparer.OrdinalIgnoreCase);
 
+        if (tables is null || tables.Count == 0)
+        {
+            IEnumerable<IDictionary<string, object>> rows =
+                await MetadataQueries.GetMetadataAsync(
+                    unitOfWork,
+                    schema,
+                    null,
+                    commandTimeout);
+
+            AddMetadataRows(
+                metadata,
+                rows);
+        }
+        else
+        {
+            List<string> requestedTables =
+                tables
+                    .Where(
+                        table =>
+                            !string.IsNullOrWhiteSpace(table))
+                    .Distinct(
+                        StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+            for (
+                int offset = 0;
+                offset < requestedTables.Count;
+                offset += MetadataBatchSize)
+            {
+                int count =
+                    Math.Min(
+                        MetadataBatchSize,
+                        requestedTables.Count - offset);
+
+                List<string> batch =
+                    requestedTables.GetRange(
+                        offset,
+                        count);
+
+                IEnumerable<IDictionary<string, object>> rows =
+                    await MetadataQueries.GetMetadataAsync(
+                        unitOfWork,
+                        schema,
+                        batch,
+                        commandTimeout);
+
+                AddMetadataRows(
+                    metadata,
+                    rows);
+            }
+        }
+
+        return metadata.Values.ToList();
+    }
+
+    private static void AddMetadataRows(
+        Dictionary<string, TableMetadata> metadata,
+        IEnumerable<IDictionary<string, object>> rows)
+    {
         foreach (IDictionary<string, object> row in rows)
         {
             string schemaName =
-                GetString(row, "SchemaName");
+                GetString(
+                    row,
+                    "SchemaName");
 
             string tableName =
-                GetString(row, "TableName");
+                GetString(
+                    row,
+                    "TableName");
 
             string key =
                 $"{schemaName}.{tableName}";
@@ -55,7 +137,9 @@ public sealed class MetadataService
                     Columns = []
                 };
 
-                metadata.Add(key, table);
+                metadata.Add(
+                    key,
+                    table);
             }
 
             table.Columns.Add(
@@ -146,15 +230,14 @@ public sealed class MetadataService
                         "RecordCount")
                 });
         }
-
-        return metadata.Values.ToList();
     }
 
     private static string GetString(
         IDictionary<string, object> row,
         string column)
     {
-        object? value = row[column];
+        object? value =
+            row[column];
 
         return value is null or DBNull
             ? string.Empty
@@ -165,7 +248,8 @@ public sealed class MetadataService
         IDictionary<string, object> row,
         string column)
     {
-        object? value = row[column];
+        object? value =
+            row[column];
 
         return value is null or DBNull
             ? null
@@ -176,7 +260,8 @@ public sealed class MetadataService
         IDictionary<string, object> row,
         string column)
     {
-        object? value = row[column];
+        object? value =
+            row[column];
 
         return value is string text &&
                text.Equals(
@@ -188,7 +273,8 @@ public sealed class MetadataService
         IDictionary<string, object> row,
         string column)
     {
-        object? value = row[column];
+        object? value =
+            row[column];
 
         return value switch
         {
@@ -207,7 +293,8 @@ public sealed class MetadataService
         IDictionary<string, object> row,
         string column)
     {
-        object? value = row[column];
+        object? value =
+            row[column];
 
         return value is null or DBNull
             ? 0L

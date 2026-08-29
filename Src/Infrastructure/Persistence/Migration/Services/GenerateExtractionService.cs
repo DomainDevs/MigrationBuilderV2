@@ -8,6 +8,7 @@ using Microsoft.Extensions.Options;
 using Persistence.Connect.Context;
 using Persistence.Metadata.Services;
 using Persistence.Migration.Builders;
+using Persistence.Migration.Helpers;
 using Persistence.Migration.Metadata;
 using Shared.Options;
 
@@ -50,10 +51,11 @@ public sealed class GenerateExtractionService : IGenerateExtractionService
                 projectPath,
                 _options.Folders.MigrationTask);
 
-        string prefix =
-            command.ArtifactType == ArtifactType.WorkFile
-                ? "WF"
-                : "STG";
+        Boolean isIntegration = false;
+        string artifactPrefix = MigrationWarningExtensions.GetArtifactPrefix(command.ArtifactType);
+        if (artifactPrefix == "INT") isIntegration = true;
+
+        //string prefix = command.ArtifactType == ArtifactType.WorkFile? "WF": "STG";
 
         List<string> generatedFiles = [];
         List<string> warnings = [];
@@ -115,7 +117,7 @@ public sealed class GenerateExtractionService : IGenerateExtractionService
             Directory.CreateDirectory(artifactFolder);
 
             string fileName =
-                $"SQL_{targetTable.Schema}.{prefix}_{targetTable.Name}.sql";
+                $"SQL_{targetTable.Schema}.{artifactPrefix}_{targetTable.Name}.sql";
 
             string filePath =
                 Path.Combine(
