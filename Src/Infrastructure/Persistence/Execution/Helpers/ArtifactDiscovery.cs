@@ -26,4 +26,52 @@ internal static class ArtifactDiscovery
             _ => 99
         };
     }
+
+    public static IReadOnlyList<string> DiscoverNumbered(
+        string folderPath)
+    {
+        return Directory
+            .GetFiles(folderPath, "*.sql")
+            .Select(file => new
+            {
+                File = file,
+                Order = GetNumericOrder(file)
+            })
+            .OrderBy(x => x.Order)
+            .ThenBy(
+                x => Path.GetFileName(x.File),
+                StringComparer.OrdinalIgnoreCase)
+            .Select(x => x.File)
+            .ToList();
+    }
+
+    private static int GetNumericOrder(
+        string file)
+    {
+        string name =
+            Path.GetFileName(file);
+
+        int separator =
+            name.IndexOf('_');
+
+        if (separator <= 0)
+        {
+            throw new InvalidOperationException(
+                $"El archivo '{name}' no cumple la convención de numeración requerida. " +
+                "Debe utilizar el formato NN_Nombre.sql.");
+        }
+
+        string prefix =
+            name[..separator];
+
+        if (!int.TryParse(
+                prefix,
+                out int order))
+        {
+            throw new InvalidOperationException(
+                $"El archivo '{name}' no contiene una numeración válida.");
+        }
+
+        return order;
+    }
 }

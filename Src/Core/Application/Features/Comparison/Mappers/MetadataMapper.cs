@@ -19,4 +19,8 @@ public static partial class MetadataMapper
     public static partial CompareRecordCountCommand ToCompareRecordCountCommand(
         this RecordCountRequestDto dto);
 
+    // DTO → Command
+    public static partial CompareRecordValueCommand ToCompareRecordValueCommand(
+        this RecordValueRequestDto dto);
+
 }

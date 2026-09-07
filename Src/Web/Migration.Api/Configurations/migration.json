@@ -3,13 +3,19 @@
     "JobName": "Migration",
     "Folders": {
       "Root": "E:\\Migration",
-      "MigrationTask": "MigrationTask",
+      "MigrationTask": {
+        "DirectoryName": "MigrationTask",
+        "PreHook": "V01_PreHook",
+        "DataIngestion": "V02_DataIngestion",
+        "PostHook": "V03_PostHook"
+      },
       "Logs": "Logs",
       "Reports": "Reports"
     },
     "Execution": {
       "BatchSize": 15000,
-      "BulkCopyTimeout": 900
+      "BulkCopyTimeout": 900,
+      "DirectTransfer": false
     }
   }
 }

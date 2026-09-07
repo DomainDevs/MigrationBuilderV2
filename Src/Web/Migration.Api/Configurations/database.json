@@ -8,9 +8,19 @@
       "User": "sa",
       "Password": "T3chn0l0gy",
       "PersistSecurityInfo": true,
-      "TimeOut": 1200
+      "TimeOut": 1500
     },
     "Target": {
+      "Provider": "SqlServer",
+      "Driver": "MSOLEDBSQL.1",
+      "Server": "10.70.10.105",
+      "Database": "sisecore_mig_test",
+      "User": "sqluser",
+      "Password": "Sistran2026+",
+      "PersistSecurityInfo": true,
+      "TimeOut": 1500
+    },
+    "Knowledge": {
       "Provider": "SqlServer",
       "Driver": "MSOLEDBSQL.1",
       "Server": "10.70.10.105",
@@ -18,27 +28,7 @@
       "User": "sqluser",
       "Password": "Sistran2026+",
       "PersistSecurityInfo": true,
-      "TimeOut": 1200
-    },
-    "Knowledge": {
-      "Provider": "SqlServer",
-      "Driver": "MSOLEDBSQL.1",
-      "Server": "10.70.10.105",
-      "Database": "siseliberty_test",
-      "User": "sqluser",
-      "Password": "Sistran2026+",
-      "PersistSecurityInfo": true,
-      "TimeOut": 1200
-    },
-    "siseliberty": {
-      "Provider": "SqlServer",
-      "Driver": "MSOLEDBSQL.1",
-      "Server": "10.70.10.105",
-      "Database": "siseliberty_test",
-      "User": "sqluser",
-      "Password": "Sistran2026+",
-      "PersistSecurityInfo": true,
-      "TimeOut": 1200
+      "TimeOut": 1500
     },
     "Workspace": {
       "Provider": "Sqlite",

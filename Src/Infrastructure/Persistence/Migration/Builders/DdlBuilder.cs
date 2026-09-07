@@ -17,10 +17,10 @@ internal static class DdlBuilder
 
         List<string> columns = [];
 
-        //Adicionar columna ProcessId
+        //Adicionar columna ExecutionId
         if (isIntegration)
         {
-            columns.Add(BuildProcessId());
+            columns.Add(BuildExecutionId());
         }
             
         //Concatenar columnas
@@ -44,7 +44,6 @@ internal static class DdlBuilder
                     targetColumn,
                     appendComma,
                     artifactType));
-
         }
 
         // Crea llave primaria si es integracion
@@ -127,7 +126,7 @@ internal static class DdlBuilder
     CONSTRAINT [PK_INT_{targetTable.Name}]
         PRIMARY KEY NONCLUSTERED
         (
-        [ProcessId],
+        [ExecutionId],
 {columns}
         )
         WITH
@@ -169,11 +168,13 @@ GO
     }
     #endregion
 
-    #region BuildProcessId
-    private static string BuildProcessId()
+    #region BuildExecutionId
+    private static string BuildExecutionId()
     {
         return
-            "        [ProcessId] CHAR(26) NOT NULL,";
+"        [ExecutionId] CHAR(26) NOT NULL," +
+Environment.NewLine +
+"        [OperationCD] CHAR(1) NOT NULL,";
     }
     #endregion
 }

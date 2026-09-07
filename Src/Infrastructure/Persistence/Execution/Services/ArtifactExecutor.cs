@@ -18,6 +18,7 @@ namespace Persistence.Execution.Services;
 public sealed class ArtifactExecutor
 {
     private const long LargeTableThreshold = 1_000_000;
+    private static Boolean isDirectTransfer = false;
 
     private readonly IDatabaseContext _database;
     private readonly IConfiguration _configuration;
@@ -62,6 +63,8 @@ public sealed class ArtifactExecutor
     public async Task ExecuteAsync(string artifactPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(artifactPath);
+        isDirectTransfer = _configuration.GetValue<bool>(
+           "Migration:Execution:DirectTransfer");
 
         if (!File.Exists(artifactPath))
         {
@@ -157,12 +160,17 @@ public sealed class ArtifactExecutor
             {
                 tables = [artifact.Table];
             }
+            if (isDirectTransfer)
+            {
+                tables = [artifact.Table];
+            }
 
             await ValidateForeignKeysAsync(
                 targetDatabase,
                 artifact.Schema,
                 artifact.Table);
         }
+        
 
         if (artifact.Type is ArtifactType.Sql)
         {
@@ -314,7 +322,10 @@ public sealed class ArtifactExecutor
 
             Timeout =
                 _configuration.GetValue<int>(
-                    "Migration:Execution:BulkCopyTimeout")
+                    "Migration:Execution:BulkCopyTimeout"),
+
+            DirectTransfer = _configuration.GetValue<bool>(
+                "Migration:Execution:DirectTransfer")
         };
 
         List<TableMetadata> artifactMetadata =

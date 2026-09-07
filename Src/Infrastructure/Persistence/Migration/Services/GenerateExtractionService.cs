@@ -49,7 +49,8 @@ public sealed class GenerateExtractionService : IGenerateExtractionService
         string outputFolder =
             Path.Combine(
                 projectPath,
-                _options.Folders.MigrationTask);
+                _options.Folders.MigrationTask.DirectoryName, 
+                _options.Folders.MigrationTask.DataIngestion);
 
         Boolean isIntegration = false;
         string artifactPrefix = MigrationWarningExtensions.GetArtifactPrefix(command.ArtifactType);

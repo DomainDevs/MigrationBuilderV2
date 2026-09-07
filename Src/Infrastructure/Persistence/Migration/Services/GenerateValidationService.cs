@@ -46,7 +46,8 @@ public sealed class GenerateValidationService : IGenerateValidationService
         string outputFolder =
             Path.Combine(
                 projectPath,
-                _options.Folders.MigrationTask);
+                _options.Folders.MigrationTask.DirectoryName, 
+                _options.Folders.MigrationTask.DataIngestion);
 
         if (!Directory.Exists(outputFolder))
         {

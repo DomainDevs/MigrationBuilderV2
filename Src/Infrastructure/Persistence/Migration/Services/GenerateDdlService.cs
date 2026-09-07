@@ -16,7 +16,7 @@ namespace Persistence.Migration.Services;
 public sealed class GenerateDdlService : IGenerateDdlService
 {
     private readonly IDatabaseContext _database;
-    //private readonly IUnitOfWork _source;
+    //private readonly IUnitOfWork _source; 
     //private readonly IUnitOfWork _target;
     private readonly MetadataService _metadataService;
     private readonly MigrationOptions _options;
@@ -27,7 +27,7 @@ public sealed class GenerateDdlService : IGenerateDdlService
         IOptions<MigrationOptions> options)
     {
         _database = database;
-        //_source = context.Source;
+        //_source = context.Source; 
         //_target = context.Target;
         _metadataService = metadataService;
         _options = options.Value;
@@ -50,7 +50,8 @@ public sealed class GenerateDdlService : IGenerateDdlService
         string outputFolder =
             Path.Combine(
                 projectPath,
-                _options.Folders.MigrationTask);
+                _options.Folders.MigrationTask.DirectoryName, 
+                _options.Folders.MigrationTask.DataIngestion);
 
         string artifactPrefix = MigrationWarningExtensions.GetArtifactPrefix(command.ArtifactType);
         //string artifactPrefix = command.ArtifactType == ArtifactType.WorkFile? "WF": "STG";

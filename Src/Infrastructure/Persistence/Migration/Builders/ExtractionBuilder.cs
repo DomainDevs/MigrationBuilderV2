@@ -157,7 +157,7 @@ FROM [{sourceTable.Schema}].[{sourceTable.Name}];
         List<string> selectColumns = [];
 
         selectColumns.Add(
-            "    '{{param:ProcessId}}' AS [ProcessId],");
+            "    '{{param:ExecutionId}}' AS [ExecutionId],");
 
         for (int i = 0; i < targetTable.Columns.Count; i++)
         {

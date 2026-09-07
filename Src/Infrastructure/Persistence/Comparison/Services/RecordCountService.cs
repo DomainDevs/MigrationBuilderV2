@@ -3,6 +3,7 @@ using Application.Features.Comparison.Commands;
 using Application.Features.Comparison.DTOs;
 using DataToolkit.Library.Connections.Context;
 using DataToolkit.Library.UnitOfWorkLayer;
+using Microsoft.Extensions.Options;
 using Persistence.Migration.Services;
 using Shared.Options;
 using System.Text.Json;
@@ -14,9 +15,12 @@ internal sealed class RecordCountService : IRecordCountService
     private readonly IDatabaseContext _database;
     private readonly MigrationOptions _options;
 
-    public RecordCountService(IDatabaseContext database)
+    public RecordCountService(
+        IDatabaseContext database,
+        IOptions<MigrationOptions> options)
     {
         _database = database;
+        _options = options.Value;
     }
 
     public async Task<List<RecordCountResultDto>> CompareAsync(
@@ -168,11 +172,62 @@ internal sealed class RecordCountService : IRecordCountService
                 $"No se pudo leer el MigrationPlan del proyecto '{projectName}'.");
         }
 
+        /*
         return plan.Packages
             .Where(static x => x.Enabled)
             .Select(static x => x.Package)
             .Where(static x => !string.IsNullOrWhiteSpace(x))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
+        */
+        /*
+        return plan.Packages
+            .Where(static x => x.Enabled)
+            .Select(static x => x.Package)
+            .Where(static x => !string.IsNullOrWhiteSpace(x))
+            .Select(static x =>
+            {
+                int separator = x.IndexOf('.');
+
+                return separator >= 0
+                    ? x[(separator + 1)..]
+                    : x;
+            })
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        */
+        List<string> packages = plan.Packages
+            .Where(static x => x.Enabled)
+            .Select(static x => x.Package)
+            .Where(static x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        // Validar las carpetas usando todavía "dbo.mpersona"
+        packages.RemoveAll(package =>
+        {
+            string packagePath =
+                Path.Combine(projectPath,
+                _options.Folders.MigrationTask.DirectoryName,
+                _options.Folders.MigrationTask.DataIngestion,
+                package);
+
+            return !Directory.Exists(packagePath);
+        });
+
+        // Ahora sí quitar el esquema
+        List<string> tables = packages
+            .Select(static package =>
+            {
+                int separator = package.IndexOf('.');
+
+                return separator >= 0
+                    ? package[(separator + 1)..]
+                    : package;
+            })
+            .ToList();
+
+        return tables;
+
     }
 }

@@ -99,7 +99,8 @@ public sealed class MigrationExecutor : IMigrationExecutor
                 string packagePath =
                     Path.Combine(
                         projectPath,
-                        _options.Folders.MigrationTask,
+                        _options.Folders.MigrationTask.DirectoryName,
+                        _options.Folders.MigrationTask.DataIngestion,
                         package.Package);
 
                 PackageExecution packageExecution = new()

@@ -8,7 +8,7 @@ namespace Persistence.Metadata.Services;
 
 public sealed class MetadataService
 {
-    private const int DefaultCommandTimeout = 300;
+    private const int DefaultCommandTimeout = 600;
     private const int MetadataBatchSize = 500;
 
     private readonly IDatabaseContext _database;

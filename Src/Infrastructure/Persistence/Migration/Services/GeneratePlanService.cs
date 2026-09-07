@@ -19,6 +19,7 @@ public sealed class GeneratePlanService : IGeneratePlanService
     private readonly MetadataService _metadataService;
     private readonly DependencyResolverService _dependencyResolver;
     private readonly MigrationPlanningService _migrationPlanningService;
+    private readonly CleanScriptGenerator _cleanScriptGenerator;
 
     private readonly IGenerateDdlService _generateDdlService;
     private readonly IGenerateExtractionService _generateExtractionService;
@@ -28,25 +29,25 @@ public sealed class GeneratePlanService : IGeneratePlanService
         Log.ForContext<GeneratePlanService>();
 
     public GeneratePlanService(
-        IDatabaseContext database, //SqlServerContext context,
+        IDatabaseContext database,
         MetadataService metadataService,
         DependencyResolverService dependencyResolver,
         MigrationPlanningService migrationPlanningService,
         IOptions<MigrationOptions> options,
         IGenerateDdlService generateDdlService,
         IGenerateExtractionService generateExtractionService,
-        IGenerateLoadService generateLoadService
-    )
+        IGenerateLoadService generateLoadService,
+        CleanScriptGenerator cleanScriptGenerator)
     {
-        _database = database; //_target = context.Target;
+        _database = database;
         _options = options.Value;
         _metadataService = metadataService;
         _dependencyResolver = dependencyResolver;
         _migrationPlanningService = migrationPlanningService;
-
         _generateDdlService = generateDdlService;
         _generateExtractionService = generateExtractionService;
         _generateLoadService = generateLoadService;
+        _cleanScriptGenerator = cleanScriptGenerator;
     }
 
     public async Task<MigrationGenerationResultDto>
@@ -57,53 +58,46 @@ public sealed class GeneratePlanService : IGeneratePlanService
         if (!Directory.Exists(projectPath))
             throw new IOException($"El directorio del proyecto '{projectPath}' no existe.");
 
-        string outputFolder = Path.Combine(projectPath, _options.Folders.MigrationTask);
+        string outputFolder = Path.Combine(
+            projectPath, _options.Folders.MigrationTask.DirectoryName,
+            _options.Folders.MigrationTask.DataIngestion);
 
-        //Si no existe, lo crea
         Directory.CreateDirectory(outputFolder);
+
+        string migrationPlanFile = Path.Combine(projectPath, "MigrationPlan.json");
 
         try
         {
-            string migrationPlanFile = Path.Combine(projectPath, "MigrationPlan.json");
-
             List<string> generatedFiles = [];
             List<string> warnings = [];
 
-            // Determinar el alcance de la migración.
-            //
-            // Si se especifican tablas, se utilizan como punto de partida.
-            // Si no se especifican, se obtiene el metadata completo de
-            // Source y Target y se toman únicamente las tablas que existen
-            // en ambos lados.
+            // 1. El MigrationPlan existente es la fuente de verdad.
+            //    Nunca se reconstruye eliminando paquetes anteriores.
+            MigrationPlan? existingPlan = await LoadExistingPlanAsync(migrationPlanFile);
+
+            List<string> packageTables = existingPlan?.Packages
+                .Select(p => ExtractTableName(p.Package, command.Schema))
+                .Where(t => !string.IsNullOrWhiteSpace(t))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList()
+                ?? [];
+
+            // 2. Determinar las tablas solicitadas.
+            //    Si existe un plan y no se especifican tablas, se conserva su alcance.
+            //    Si no existe plan, se conserva el comportamiento anterior: tablas comunes.
             List<string> requestedTables;
 
             if (command.Tables is { Count: > 0 })
             {
-                requestedTables =
-                    command.Tables
-                        .Where(t => !string.IsNullOrWhiteSpace(t))
-                        .Distinct(StringComparer.OrdinalIgnoreCase)
-                        .ToList();
-
-                List<TableMetadata> targetMetadata =
-                    await _metadataService.ExtractMetadataAsync(
-                        "Target",
-                        command.Schema,
-                        requestedTables);
-
-                HashSet<string> existingTargetTables =
-                    targetMetadata
-                        .Select(t => t.Name)
-                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-                foreach (string table in requestedTables)
-                {
-                    if (!existingTargetTables.Contains(table))
-                    {
-                        warnings.Add(
-                            $"La tabla solicitada '{command.Schema}.{table}' no existe en la base de datos destino.");
-                    }
-                }
+                requestedTables = command.Tables
+                    .Where(t => !string.IsNullOrWhiteSpace(t))
+                    .Select(t => t.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+            }
+            else if (existingPlan is not null && packageTables.Count > 0)
+            {
+                requestedTables = packageTables.ToList();
             }
             else
             {
@@ -117,132 +111,220 @@ public sealed class GeneratePlanService : IGeneratePlanService
                         "Target",
                         command.Schema);
 
-                HashSet<string> sourceTables =
-                    sourceMetadata
-                        .Select(t => t.Name)
-                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                HashSet<string> sourceTables = sourceMetadata
+                    .Select(t => t.Name)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-                requestedTables =
-                    targetMetadata
-                        .Select(t => t.Name)
-                        .Where(sourceTables.Contains)
-                        .Distinct(StringComparer.OrdinalIgnoreCase)
-                        .ToList();
+                requestedTables = targetMetadata
+                    .Select(t => t.Name)
+                    .Where(sourceTables.Contains)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
             }
 
-            if (requestedTables.Count == 0)
+            if (requestedTables.Count == 0 && packageTables.Count == 0)
                 throw new IOException(
-                    $"No se encontraron tablas comunes entre origen y destino para el esquema '{command.Schema}'.");
+                    $"No se encontraron tablas para generar el plan de migración del esquema '{command.Schema}'.");
 
-            // Resolver el conjunto completo:
-            // tablas solicitadas + todas sus dependencias.
-            var completeTables =
+            // 3. Detectar solamente las tablas nuevas solicitadas.
+            var knownPackages = existingPlan?.Packages
+                .GroupBy(
+                    p => p.Package,
+                    StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.First(),
+                    StringComparer.OrdinalIgnoreCase)
+                ?? new Dictionary<string, MigrationPackage>(StringComparer.OrdinalIgnoreCase);
+
+            List<string> newRequestedTables = [];
+
+            foreach (string table in requestedTables)
+            {
+                string packageName = BuildPackageName(command.Schema, table);
+
+                if (!knownPackages.ContainsKey(packageName))
+                    newRequestedTables.Add(table);
+            }
+
+            // 4. Validar existencia en Target solo para las tablas nuevas solicitadas.
+            if (newRequestedTables.Count > 0)
+            {
+                List<TableMetadata> targetMetadata =
+                    await _metadataService.ExtractMetadataAsync(
+                        "Target",
+                        command.Schema,
+                        newRequestedTables);
+
+                HashSet<string> existingTargetTables = targetMetadata
+                    .Select(t => t.Name)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                foreach (string table in newRequestedTables)
+                {
+                    if (!existingTargetTables.Contains(table))
+                    {
+                        warnings.Add(
+                            $"La tabla solicitada '{command.Schema}.{table}' no existe en la base de datos destino y no se agregará al plan.");
+                    }
+                }
+            }
+
+            // Solo tablas realmente existentes en Target pueden entrar al análisis.
+            List<string> validatedRequestedTables;
+
+            if (newRequestedTables.Count > 0)
+            {
+                List<TableMetadata> targetMetadata =
+                    await _metadataService.ExtractMetadataAsync(
+                        "Target",
+                        command.Schema,
+                        newRequestedTables);
+
+                HashSet<string> existingTargetTables = targetMetadata
+                    .Select(t => t.Name)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                validatedRequestedTables = requestedTables
+                    .Where(table =>
+                        packageTables.Contains(table, StringComparer.OrdinalIgnoreCase) ||
+                        existingTargetTables.Contains(table))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+            }
+            else
+            {
+                validatedRequestedTables = requestedTables;
+            }
+
+            if (validatedRequestedTables.Count == 0 && packageTables.Count == 0)
+                throw new IOException(
+                    $"No se encontraron tablas válidas para generar el plan de migración del esquema '{command.Schema}'.");
+
+            // 5. El conjunto base del plan es SIEMPRE el plan existente + nuevas tablas válidas.
+            var planTables = new HashSet<string>(
+                packageTables,
+                StringComparer.OrdinalIgnoreCase);
+
+            foreach (string table in validatedRequestedTables)
+                planTables.Add(table);
+
+            // 6. Resolver dependencias del conjunto completo.
+            //    Las dependencias que no estén en el plan se agregan como nuevos paquetes.
+            List<string> resolvedTables =
                 await _dependencyResolver.ResolveDependenciesAsync(
                     command.Schema,
-                    requestedTables);
+                    planTables.ToList());
 
-            var allTables =
-                requestedTables
-                    .Union(
-                        completeTables,
-                        StringComparer.OrdinalIgnoreCase)
-                    .ToList();
+            foreach (string table in resolvedTables)
+                planTables.Add(table);
 
-            completeTables =
-                await _dependencyResolver.ResolveDependenciesAsync(
-                    command.Schema,
-                    allTables);
-
-            allTables =
-                allTables
-                    .Union(
-                        completeTables,
-                        StringComparer.OrdinalIgnoreCase)
-                    .ToList();
-
-            // El planner es la autoridad para determinar el orden.
+            // 7. El planner calcula el orden del conjunto acumulado.
             IReadOnlyList<string> executionPlan =
                 await _migrationPlanningService.BuildExecutionPlanStringAsyncStr(
                     _database["Target"].CreateNew(),
                     command.Schema,
-                    allTables);
+                    planTables.ToList());
 
             if (executionPlan.Count == 0)
                 throw new IOException(
                     "No se encontraron tablas válidas para generar el plan de migración.");
 
-            // Garantizar que ninguna tabla solicitada o dependencia resuelta
-            // desaparezca del plan si el planner no la devuelve.
-            HashSet<string> plannedTables =
-                executionPlan
-                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            HashSet<string> plannedTables = executionPlan
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-            List<string> missingTables =
-                allTables
-                    .Where(table => !plannedTables.Contains(table))
-                    .ToList();
+            // 8. Si el planner no devuelve alguna tabla que sí estaba en el plan,
+            //    NO se elimina. Se conserva y se informa.
+            List<string> retainedUnplannedTables = planTables
+                .Where(table => !plannedTables.Contains(table))
+                .OrderBy(table => table, StringComparer.OrdinalIgnoreCase)
+                .ToList();
 
-            if (missingTables.Count > 0)
+            foreach (string table in retainedUnplannedTables)
             {
-                executionPlan =
-                    executionPlan
-                        .Concat(missingTables)
-                        .ToList();
+                warnings.Add(
+                    $"La tabla '{command.Schema}.{table}' permanece en el MigrationPlan, pero no fue devuelta por el planner y conserva su posición relativa.");
             }
 
-            MigrationPlan? previousPlan = null;
-            if (File.Exists(migrationPlanFile))
-            {
-                try
-                {
-                    previousPlan = JsonSerializer.Deserialize<MigrationPlan>(
-                        await File.ReadAllTextAsync(migrationPlanFile));
-                }
-                catch
-                {
-                    previousPlan = null;
-                }
-            }
+            // 9. Crear/actualizar paquetes conservando todas sus propiedades.
+            //    Los paquetes nuevos se agregan con los valores por defecto.
+            var packagesByName = new Dictionary<string, MigrationPackage>(
+                StringComparer.OrdinalIgnoreCase);
 
-            Dictionary<string, MigrationPackage> previousPackages =
-                previousPlan?.Packages.ToDictionary(
-                    p => p.Package,
-                    StringComparer.OrdinalIgnoreCase)
-                ?? new(StringComparer.OrdinalIgnoreCase);
-
-            var plan = new MigrationPlan
+            if (existingPlan is not null)
             {
-                Version = "1.0",
-                Revision = (previousPlan?.Revision ?? 0) + 1,
-                GeneratedAt = DateTime.UtcNow,
-                Reprocess = false,
-                Packages = executionPlan
-                    .Select((table, index) =>
+                foreach (MigrationPackage package in existingPlan.Packages)
+                {
+                    if (string.IsNullOrWhiteSpace(package.Package))
+                        continue;
+
+                    if (!packagesByName.ContainsKey(package.Package))
                     {
-                        string packageName = $"{command.Schema}.{table}";
-
-                        if (previousPackages.TryGetValue(packageName, out MigrationPackage? oldPackage))
+                        packagesByName[package.Package] = new MigrationPackage
                         {
-                            return new MigrationPackage
-                            {
-                                Stage = index + 1,
-                                Package = packageName,
-                                Enabled = oldPackage.Enabled,
-                                Approved = oldPackage.Approved,
-                                SelfContainedEtl = oldPackage.SelfContainedEtl
-                            };
-                        }
-
-                        return new MigrationPackage
-                        {
-                            Stage = index + 1,
-                            Package = packageName,
-                            Enabled = true,
-                            Approved = false,
-                            SelfContainedEtl = false
+                            Stage = package.Stage,
+                            Package = package.Package,
+                            Enabled = package.Enabled,
+                            Approved = package.Approved,
+                            SelfContainedEtl = package.SelfContainedEtl
                         };
-                    })
-                    .ToList()
+                    }
+                }
+            }
+
+            foreach (string table in planTables)
+            {
+                string packageName = BuildPackageName(command.Schema, table);
+
+                if (!packagesByName.ContainsKey(packageName))
+                {
+                    packagesByName[packageName] = new MigrationPackage
+                    {
+                        Stage = 0,
+                        Package = packageName,
+                        Enabled = true,
+                        Approved = false,
+                        SelfContainedEtl = false
+                    };
+                }
+            }
+
+            // 10. Solo se recalcula Stage.
+            //     Las propiedades Enabled/Approved/SelfContainedEtl permanecen intactas.
+            int nextStage = 1;
+
+            foreach (string table in executionPlan)
+            {
+                string packageName = BuildPackageName(command.Schema, table);
+
+                if (packagesByName.TryGetValue(packageName, out MigrationPackage? package))
+                {
+                    package.Stage = nextStage++;
+                }
+            }
+
+            // 11. Los paquetes que el planner no devolvió permanecen en el plan.
+            //     Se colocan después del resultado calculado para evitar colisiones de Stage.
+            foreach (string table in retainedUnplannedTables)
+            {
+                string packageName = BuildPackageName(command.Schema, table);
+
+                if (packagesByName.TryGetValue(packageName, out MigrationPackage? package))
+                    package.Stage = nextStage++;
+            }
+
+            List<MigrationPackage> finalPackages = packagesByName.Values
+                .OrderBy(p => p.Stage)
+                .ThenBy(p => p.Package, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            MigrationPlan plan = new()
+            {
+                Version = existingPlan?.Version ?? "1.0",
+                Revision = (existingPlan?.Revision ?? 0) + 1,
+                GeneratedAt = DateTime.UtcNow,
+                Reprocess = existingPlan?.Reprocess ?? false,
+                Packages = finalPackages
             };
 
             await File.WriteAllTextAsync(
@@ -256,9 +338,7 @@ public sealed class GeneratePlanService : IGeneratePlanService
 
             generatedFiles.Add(migrationPlanFile);
 
-            // Los servicios de artifacts reciben el plan ya ordenado.
-            // Cada servicio debe resolver el metadata por tabla para evitar
-            // listas masivas de parámetros SQL.
+            // 12. Los artifacts se generan con el orden calculado por el planner.
             MigrationResponseDto ddlResponse =
                 await _generateDdlService.GenerateDdlScriptsAsync(
                     new GenerateDdlCommand(
@@ -267,6 +347,35 @@ public sealed class GeneratePlanService : IGeneratePlanService
                         command.ArtifactType,
                         executionPlan.ToList()));
 
+            // 13. Generar estrategia de borrado
+            string preHookFolder =
+                Path.Combine(_options.Folders.MigrationTask.DirectoryName, _options.Folders.MigrationTask.PreHook);
+
+            Directory.CreateDirectory(preHookFolder);
+
+            string cleanFile =
+                Path.Combine(
+                    preHookFolder,
+                    "01_CLEAN_MigrationPlan.sql");
+
+            if (!File.Exists(cleanFile))
+            {
+                string cleanScript =
+                    _cleanScriptGenerator.Generate(plan);
+
+                await File.WriteAllTextAsync(
+                    cleanFile,
+                    cleanScript);
+
+                generatedFiles.Add(cleanFile);
+            }
+            else
+            {
+                warnings.Add(
+                    $"El archivo '{cleanFile}' ya existe, no se actualiza.");
+            }
+
+            // 14. Generar reponse
             MigrationResponseDto extractionResponse =
                 await _generateExtractionService.GenerateExtractionAsync(
                     new GenerateExtractionCommand(
@@ -295,7 +404,6 @@ public sealed class GeneratePlanService : IGeneratePlanService
                         Files = generatedFiles,
                         Warnings = warnings
                     },
-
                     new MigrationArtifactResultDto
                     {
                         Artifact = "DDL",
@@ -304,7 +412,6 @@ public sealed class GeneratePlanService : IGeneratePlanService
                         Files = ddlResponse.Files,
                         Warnings = ddlResponse.Warnings
                     },
-
                     new MigrationArtifactResultDto
                     {
                         Artifact = "Extraction",
@@ -313,7 +420,6 @@ public sealed class GeneratePlanService : IGeneratePlanService
                         Files = extractionResponse.Files,
                         Warnings = extractionResponse.Warnings
                     },
-
                     new MigrationArtifactResultDto
                     {
                         Artifact = "Load",
@@ -327,13 +433,57 @@ public sealed class GeneratePlanService : IGeneratePlanService
         }
         catch (Exception ex)
         {
-            Logger.Information(
-                "Error: timeout." + ex.Message.ToString(),
+            Logger.Error(
+                ex,
+                "Error generando el plan de migración para {ProjectName}/{Schema}.",
                 command.ProjectName,
                 command.Schema);
 
             throw;
         }
+    }
+
+    private static async Task<MigrationPlan?> LoadExistingPlanAsync(string migrationPlanFile)
+    {
+        if (!File.Exists(migrationPlanFile))
+            return null;
+
+        try
+        {
+            string json = await File.ReadAllTextAsync(migrationPlanFile);
+
+            return JsonSerializer.Deserialize<MigrationPlan>(
+                json,
+                new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+        }
+        catch (JsonException ex)
+        {
+            throw new IOException(
+                $"El MigrationPlan '{migrationPlanFile}' no es un JSON válido. El plan existente no será sobrescrito.",
+                ex);
+        }
+    }
+
+    private static string BuildPackageName(string schema, string table)
+        => $"{schema}.{table}";
+
+    private static string ExtractTableName(string packageName, string schema)
+    {
+        if (string.IsNullOrWhiteSpace(packageName))
+            return string.Empty;
+
+        string prefix = $"{schema}.";
+
+        if (packageName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            return packageName[prefix.Length..];
+
+        int separator = packageName.IndexOf('.');
+        return separator >= 0
+            ? packageName[(separator + 1)..]
+            : packageName;
     }
 }
 

@@ -7,8 +7,9 @@ public sealed record MigrationExecuteRequest
     [DefaultValue("Master")]
     public required string ProjectName { get; init; }
 
-    //[DefaultValue("[]")]
-    public List<MigrationParameterRequest> Parameters { get; init; } = [];
+    [DefaultValue("0")]
+    public required string ExecutionId { get; init; }
+    //public List<MigrationParameterRequest> Parameters { get; init; } = [];
 
     [DefaultValue("[]")]
     public List<string> Packages { get; init; } = [];
