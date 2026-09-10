@@ -30,7 +30,7 @@ try
         builder.Configuration.GetSection(MigrationOptions.SectionName));
 
     // ---------------------------------------------------------------------
-    // Service Registration (Manual)
+    // Service Registration (Manual).
     // ---------------------------------------------------------------------
     builder.Services
         .AddInfrastructure(builder.Configuration)
@@ -38,7 +38,7 @@ try
         .AddApplication();
 
     // ---------------------------------------------------------------------
-    // Service Registration (Automatic)
+    // Service Registration (Automatic).
     // ---------------------------------------------------------------------
     builder.Services.AddBootstrap(
         false,

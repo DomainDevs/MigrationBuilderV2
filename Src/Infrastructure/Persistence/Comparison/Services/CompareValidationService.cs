@@ -41,6 +41,7 @@ public sealed class CompareValidationService : ICompareValidationService
     public async Task<CompareValidationResponseDto> CompareValidationAsync(
         CompareValidationCommand command)
     {
+
         Stopwatch stopwatch = Stopwatch.StartNew();
 
         string strSource =
