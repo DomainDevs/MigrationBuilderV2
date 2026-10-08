@@ -1,4 +1,5 @@
 ﻿using DataToolkit.Library;
+using Domain.Enums;
 
 namespace Persistence.Migration.Builders;
 
@@ -10,13 +11,17 @@ internal static class LoadBuilder
         TableMetadata metadata,
         bool addParams = false)
     {
-        var columns = GetLoadColumns(metadata).ToList();
+        var columns =
+            GetLoadColumns(metadata)
+                .ToList();
 
         var columnNames =
-            columns.Select(c => $"[{c.Name}]");
+            columns.Select(
+                c => $"[{c.Name}]");
 
         var parameters =
-            columns.Select(c => $"@{c.Name}");
+            columns.Select(
+                c => $"@{c.Name}");
 
         if (addParams)
         {
@@ -45,12 +50,39 @@ INSERT INTO [{metadata.Schema}].[{metadata.Name}]
     #region BuildColumnList
 
     public static string BuildColumnList(
-        TableMetadata metadata)
+        TableMetadata metadata,
+        ArtifactType artifactType)
     {
+        bool isHomologation =
+            artifactType == ArtifactType.Transformation;
+
         return string.Join(
             ", ",
             GetLoadColumns(metadata)
-                .Select(c => $"[{c.Name}]"));
+                .Select(
+                    column =>
+                        BuildColumnExpression(
+                            column,
+                            isHomologation)));
+    }
+
+    #endregion
+
+    #region BuildColumnExpression
+
+    private static string BuildColumnExpression(
+        ColumnMetadata column,
+        bool isHomologation)
+    {
+        if (isHomologation &&
+            column.IsPrimaryKey)
+        {
+            return
+                $"INTTBL.[Target_{column.Name}]";
+        }
+
+        return
+            $"INTTBL.[{column.Name}]";
     }
 
     #endregion
@@ -61,7 +93,8 @@ INSERT INTO [{metadata.Schema}].[{metadata.Name}]
         TableMetadata metadata)
     {
         return metadata.Columns
-            .Where(c => !c.IsComputed);
+            .Where(
+                c => !c.IsComputed);
     }
 
     #endregion

@@ -92,6 +92,54 @@ internal static class ExtractionBuilder
 
     #endregion
 
+    #region BuildHomologationKeyColumns
+
+    private static void BuildHomologationKeyColumns(
+        List<string> selectColumns,
+        TableMetadata sourceTable,
+        TableMetadata targetTable)
+    {
+        List<ColumnMetadata> primaryKeys =
+            targetTable.Columns
+                .Where(column => column.IsPrimaryKey)
+                .ToList();
+
+        for (int i = 0; i < primaryKeys.Count; i++)
+        {
+            ColumnMetadata targetPrimaryKey =
+                primaryKeys[i];
+
+            ColumnMetadata? sourcePrimaryKey =
+                sourceTable.Columns.FirstOrDefault(column =>
+                    column.Name.Equals(
+                        targetPrimaryKey.Name,
+                        StringComparison.OrdinalIgnoreCase));
+
+            bool hasFollowingColumn =
+                i < primaryKeys.Count - 1;
+
+            string sourceComma =
+                hasFollowingColumn || primaryKeys.Count > 0
+                    ? ","
+                    : string.Empty;
+
+            string sourceExpression =
+                sourcePrimaryKey is not null
+                    ? $"[{sourcePrimaryKey.Name}]"
+                    : MigrationWarningExtensions.GetDefaultValue(
+                        targetPrimaryKey);
+
+            selectColumns.Add(
+                $"    {sourceExpression} AS [Source_{targetPrimaryKey.Name}],");
+
+            selectColumns.Add(
+                $"    NULL AS [Target_{targetPrimaryKey.Name}]" +
+                (hasFollowingColumn ? "," : string.Empty));
+        }
+    }
+
+    #endregion
+
     #region BuildSelect
 
     private static string BuildSelect(
@@ -105,6 +153,9 @@ internal static class ExtractionBuilder
             MigrationWarningExtensions.GetArtifactPrefix(
                 artifactType);
 
+        bool isHomologation =
+            artifactType == ArtifactType.Transformation;
+
         for (int i = 0; i < targetTable.Columns.Count; i++)
         {
             ColumnMetadata targetColumn =
@@ -116,14 +167,28 @@ internal static class ExtractionBuilder
                         targetColumn.Name,
                         StringComparison.OrdinalIgnoreCase));
 
+            bool hasHomologationKeys =
+                isHomologation &&
+                targetTable.Columns.Any(
+                    column => column.IsPrimaryKey);
+
             bool appendComma =
-                i < targetTable.Columns.Count - 1;
+                i < targetTable.Columns.Count - 1 ||
+                hasHomologationKeys;
 
             selectColumns.Add(
                 BuildQueryColumn(
                     sourceColumn,
                     targetColumn,
                     appendComma));
+        }
+
+        if (isHomologation)
+        {
+            BuildHomologationKeyColumns(
+                selectColumns,
+                sourceTable,
+                targetTable);
         }
 
         string select =

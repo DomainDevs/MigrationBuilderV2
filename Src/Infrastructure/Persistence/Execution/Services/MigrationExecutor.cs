@@ -13,15 +13,18 @@ namespace Persistence.Execution.Services;
 public sealed class MigrationExecutor : IMigrationExecutor
 {
     private readonly MigrationPlanService _migrationPlanService;
+    private readonly SqlProcessExecutor _sqlProcessExecutor;
     private readonly PackageExecutor _packageExecutor;
     private readonly MigrationOptions _options;
 
     public MigrationExecutor(
         MigrationPlanService migrationPlanService,
+        SqlProcessExecutor sqlProcessExecutor,
         PackageExecutor packageExecutor,
         IOptions<MigrationOptions> options)
     {
         _migrationPlanService = migrationPlanService;
+        _sqlProcessExecutor = sqlProcessExecutor;
         _packageExecutor = packageExecutor;
         _options = options.Value;
     }
@@ -31,6 +34,7 @@ public sealed class MigrationExecutor : IMigrationExecutor
         CancellationToken cancellationToken)
     {
         string projectPath = command.ProjectName;
+
         List<LogEntry> logs = [];
 
         command.Packages.RemoveAll(x =>
@@ -42,6 +46,14 @@ public sealed class MigrationExecutor : IMigrationExecutor
             Path.Combine(
                 _options.Folders.Root,
                 projectPath);
+
+        //PreHook
+        _ = _sqlProcessExecutor.ExecuteAsync(
+            Path.Combine(projectPath, 
+                _options.Folders.MigrationTask.DirectoryName, 
+                _options.Folders.MigrationTask.PreHook), 
+            cancellationToken);
+        
 
         if (!Directory.Exists(projectPath))
         {
@@ -126,6 +138,13 @@ public sealed class MigrationExecutor : IMigrationExecutor
         writer.EscribirLog(
             $"{projectPath}\\{_options.Folders.Logs}\\",
             logs);
+
+        //PostHook
+        _ = _sqlProcessExecutor.ExecuteAsync(
+            Path.Combine(projectPath,
+                _options.Folders.MigrationTask.DirectoryName,
+                _options.Folders.MigrationTask.PostHook),
+            cancellationToken);
 
         return new MigrationExecuteResponse
         {

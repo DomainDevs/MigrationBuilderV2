@@ -13,8 +13,8 @@
       "Reports": "Reports"
     },
     "Execution": {
-      "BatchSize": 15000,
-      "BulkCopyTimeout": 900,
+      "BatchSize": 16000,
+      "BulkCopyTimeout": 1200,
       "DirectTransfer": false
     }
   }

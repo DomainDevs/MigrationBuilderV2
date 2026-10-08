@@ -12,21 +12,28 @@ internal static class DdlBuilder
         TableMetadata targetTable,
         ArtifactType artifactType)
     {
-        string artifactPrefix = MigrationWarningExtensions.GetArtifactPrefix(artifactType);
-        bool isIntegration = artifactType == ArtifactType.Integration;
+        string artifactPrefix =
+            MigrationWarningExtensions.GetArtifactPrefix(artifactType);
+
+        bool isHomologation =
+            artifactType == ArtifactType.Transformation;
+
+        bool isIntegration =
+            artifactType == ArtifactType.Integration;
 
         List<string> columns = [];
 
-        //Adicionar columna ExecutionId
+        // Adicionar columnas de integración
         if (isIntegration)
         {
             columns.Add(BuildExecutionId());
         }
-            
-        //Concatenar columnas
+
+        // Concatenar columnas
         for (int i = 0; i < targetTable.Columns.Count; i++)
         {
-            ColumnMetadata targetColumn = targetTable.Columns[i];
+            ColumnMetadata targetColumn =
+                targetTable.Columns[i];
 
             ColumnMetadata? sourceColumn =
                 sourceTable?.Columns.FirstOrDefault(c =>
@@ -36,6 +43,7 @@ internal static class DdlBuilder
 
             bool appendComma =
                 isIntegration ||
+                isHomologation ||
                 i < targetTable.Columns.Count - 1;
 
             columns.Add(
@@ -46,7 +54,15 @@ internal static class DdlBuilder
                     artifactType));
         }
 
-        // Crea llave primaria si es integracion
+        // Adicionar columnas de homologación
+        if (isHomologation)
+        {
+            columns.AddRange(
+                BuildHomologationKeys(
+                    targetTable));
+        }
+
+        // Crear llave primaria si es integración
         if (isIntegration)
         {
             columns.Add(
@@ -80,7 +96,9 @@ internal static class DdlBuilder
                 targetColumn);
 
         string comma =
-            appendComma ? "," : string.Empty;
+            appendComma
+                ? ","
+                : string.Empty;
 
         bool isIntegration =
             artifactType == ArtifactType.Integration;
@@ -92,6 +110,44 @@ internal static class DdlBuilder
 
         return
             $"        [{targetColumn.Name}] {Common.BuildSqlType(targetColumn)} {nullability}{comma}{warning}";
+    }
+    #endregion
+
+    #region BuildHomologationKeys
+    private static IEnumerable<string> BuildHomologationKeys(
+    TableMetadata targetTable)
+    {
+        List<ColumnMetadata> primaryKeyColumns =
+            targetTable.Columns
+                .Where(column => column.IsPrimaryKey)
+                .ToList();
+
+        if (primaryKeyColumns.Count == 0)
+        {
+            return [];
+        }
+
+        List<string> columns = [];
+
+        for (int i = 0; i < primaryKeyColumns.Count; i++)
+        {
+            ColumnMetadata primaryKeyColumn =
+                primaryKeyColumns[i];
+
+            string sqlType =
+                Common.BuildSqlType(primaryKeyColumn);
+
+            bool appendComma =
+                i < primaryKeyColumns.Count - 1;
+
+            columns.Add(
+                $"        [Source_{primaryKeyColumn.Name}] {sqlType} NULL,");
+
+            columns.Add(
+                $"        [Target_{primaryKeyColumn.Name}] {sqlType} NULL{(appendComma ? "," : string.Empty)}");
+        }
+
+        return columns;
     }
     #endregion
 
@@ -178,3 +234,4 @@ Environment.NewLine +
     }
     #endregion
 }
+

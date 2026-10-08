@@ -163,7 +163,7 @@ public sealed class GenerateLoadService : IGenerateLoadService
                 false);
 
         string selectSql =
-            $"SELECT {LoadBuilder.BuildColumnList(targetTable)}" +
+            $"SELECT {LoadBuilder.BuildColumnList(targetTable, artifactType)}" +
             $"{Environment.NewLine}" +
             $"FROM [{targetTable.Schema}].[{artifactPrefix}_{targetTable.Name}] INTTBL";
 
