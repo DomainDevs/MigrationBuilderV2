@@ -47,13 +47,14 @@ public sealed class MigrationExecutor : IMigrationExecutor
                 _options.Folders.Root,
                 projectPath);
 
+
         //PreHook
-        _ = _sqlProcessExecutor.ExecuteAsync(
-            Path.Combine(projectPath, 
-                _options.Folders.MigrationTask.DirectoryName, 
-                _options.Folders.MigrationTask.PreHook), 
+        await _sqlProcessExecutor.ExecuteAsync(
+            Path.Combine(
+                projectPath,
+                _options.Folders.MigrationTask.DirectoryName,
+                _options.Folders.MigrationTask.PreHook),
             cancellationToken);
-        
 
         if (!Directory.Exists(projectPath))
         {
@@ -140,8 +141,9 @@ public sealed class MigrationExecutor : IMigrationExecutor
             logs);
 
         //PostHook
-        _ = _sqlProcessExecutor.ExecuteAsync(
-            Path.Combine(projectPath,
+        await _sqlProcessExecutor.ExecuteAsync(
+            Path.Combine(
+                projectPath,
                 _options.Folders.MigrationTask.DirectoryName,
                 _options.Folders.MigrationTask.PostHook),
             cancellationToken);
