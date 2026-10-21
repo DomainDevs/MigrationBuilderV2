@@ -10,6 +10,7 @@ public sealed class ConnectionConfig
     public string Password { get; set; } = string.Empty;
     public bool PersistSecurityInfo { get; set; }
     public int TimeOut { get; set; }
+    public string ApplicationName { get; set; } = "LIB";
 
     public string BuildConnectionStringETL()
     {
@@ -19,8 +20,9 @@ public sealed class ConnectionConfig
             $"Initial Catalog={Database};" +
             $"User ID={User};" +
             $"Password={Password};" +
-            $"Persist Security Info={PersistSecurityInfo};"+
-            $"Connect Timeout={TimeOut};";
+            $"Persist Security Info={PersistSecurityInfo};" +
+            $"Connect Timeout={TimeOut};" +
+            $"Application Name={ApplicationName};";
     }
     public string BuildConnectionStringSql()
     {
@@ -33,7 +35,7 @@ public sealed class ConnectionConfig
             $"Min Pool Size=3;" +
             $"Max Pool Size=30;" +
             $"Connection Timeout={TimeOut};" +
-            $"Application Name=LIB;" +
+            $"Application Name={ApplicationName};" +
             $"Language=us_english;" +
             $"Encrypt=True;" +
             $"TrustServerCertificate=True;";

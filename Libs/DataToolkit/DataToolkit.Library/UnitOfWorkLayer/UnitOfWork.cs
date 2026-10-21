@@ -1,4 +1,5 @@
-﻿using DataToolkit.Library.Connections;
+﻿
+using DataToolkit.Library.Connections;
 using DataToolkit.Library.Engine.Abstractions;
 using DataToolkit.Library.Engine.Core;
 using DataToolkit.Library.Repositories;
@@ -8,7 +9,6 @@ namespace DataToolkit.Library.UnitOfWorkLayer;
 
 public sealed class UnitOfWork : IUnitOfWork
 {
-
     /// <summary>
     /// Gets the unique identifier of this UnitOfWork instance.
     /// </summary>
@@ -24,56 +24,47 @@ public sealed class UnitOfWork : IUnitOfWork
 
     private bool _disposed;
 
-    public IDbTransaction? Transaction => _transaction; 
+    public IDbTransaction? Transaction => _transaction;
     public bool HasActiveTransaction => _transaction != null;
 
     public ISqlExecutor Sql { get; }
 
     public UnitOfWork(
         IDbConnectionFactory factory,
-        string connection = "SqlServer"
-        )
+        string connection = "SqlServer")
     {
         ArgumentNullException.ThrowIfNull(factory);
-
-        _factory = factory;
-
         ArgumentException.ThrowIfNullOrWhiteSpace(connection);
 
+        _factory = factory;
         _connection = connection;
 
-        // Connection is created lazily - Opening is deferred until first use.
+        // La conexión se crea de forma diferida.
+        // Su apertura corresponde al ejecutor según el flujo
+        // síncrono o asíncrono utilizado.
         Sql = new SqlExecutor(
             GetConnection,
-            GetTransaction
-            );
+            GetTransaction);
     }
 
     /// <summary>
     /// Creates a new independent UnitOfWork using the same connection configuration.
-    /// The returned instance does not share connection, transaction or repositories
-    /// with the current UnitOfWork.
     /// </summary>
     public IUnitOfWork CreateNew()
     {
         ThrowIfDisposed();
 
-        /*
-        if (HasActiveTransaction)
-        {
-            throw new InvalidOperationException(
-                "Cannot create a new UnitOfWork while a transaction is active.");
-        }
-        */
-
-        return new UnitOfWork(
-            _factory,
-            _connection);
+        return new UnitOfWork(_factory, _connection);
     }
 
     // =========================================================
-    // SINGLE OWNERSHIP: CONNECTION CONTROLLED ONLY HERE
+    // CONNECTION OWNERSHIP
     // =========================================================
+
+    /// <summary>
+    /// Obtiene la conexión sin abrirla.
+    /// SqlExecutor controla la apertura síncrona o asíncrona.
+    /// </summary>
     private IDbConnection GetConnection()
     {
         ThrowIfDisposed();
@@ -86,35 +77,59 @@ public sealed class UnitOfWork : IUnitOfWork
                     "The connection factory returned a null connection.");
         }
 
-        EnsureOpen();
+        if (_dbConnection.State == ConnectionState.Broken)
+        {
+            throw new InvalidOperationException(
+                "Connection is broken.");
+        }
+
         return _dbConnection;
     }
 
     private IDbTransaction? GetTransaction() => _transaction;
 
+    /// <summary>
+    /// Apertura síncrona reservada para operaciones que la requieren,
+    /// como el inicio de una transacción síncrona.
+    /// </summary>
     private void EnsureOpen()
     {
-        if (_dbConnection == null) return;
+        if (_dbConnection == null)
+        {
+            throw new InvalidOperationException(
+                "Connection has not been created.");
+        }
 
         if (_dbConnection.State == ConnectionState.Broken)
-            throw new InvalidOperationException("Connection is broken.");
+        {
+            throw new InvalidOperationException(
+                "Connection is broken.");
+        }
 
         if (_dbConnection.State != ConnectionState.Open)
+        {
             _dbConnection.Open();
+        }
     }
 
     // =========================================================
     // TRANSACTIONS
     // =========================================================
+
     public void BeginTransaction()
     {
         ThrowIfDisposed();
 
-        var conn = GetConnection();
-
         if (_transaction != null)
+        {
             throw new InvalidOperationException(
                 "Transaction already active.");
+        }
+
+        var conn = GetConnection();
+
+        // BeginTransaction es síncrono y necesita una conexión abierta.
+        EnsureOpen();
 
         _transaction = conn.BeginTransaction();
         _repositories.Clear();
@@ -125,7 +140,10 @@ public sealed class UnitOfWork : IUnitOfWork
         ThrowIfDisposed();
 
         if (_transaction == null)
-            throw new InvalidOperationException("No active transaction to commit.");
+        {
+            throw new InvalidOperationException(
+                "No active transaction to commit.");
+        }
 
         try
         {
@@ -142,7 +160,10 @@ public sealed class UnitOfWork : IUnitOfWork
         ThrowIfDisposed();
 
         if (_transaction == null)
-            throw new InvalidOperationException("No active transaction to rollback.");
+        {
+            throw new InvalidOperationException(
+                "No active transaction to rollback.");
+        }
 
         try
         {
@@ -159,19 +180,22 @@ public sealed class UnitOfWork : IUnitOfWork
         _transaction?.Dispose();
         _transaction = null;
 
-        // Each transaction gets fresh repository instances.
-        _repositories.Clear(); // Cada transacción obtiene instancias nuevas de repositorios.
+        // Cada transacción obtiene instancias nuevas de repositorios.
+        _repositories.Clear();
     }
 
     // =========================================================
     // REPOSITORIES
     // =========================================================
+
     public IGenericRepository<T> Repository<T>() where T : class
     {
         ThrowIfDisposed();
 
         if (_repositories.TryGetValue(typeof(T), out var repo))
+        {
             return (IGenericRepository<T>)repo;
+        }
 
         var instance = new GenericRepository<T>(Sql);
         _repositories.Add(typeof(T), instance);
@@ -182,18 +206,25 @@ public sealed class UnitOfWork : IUnitOfWork
     // =========================================================
     // SAFETY
     // =========================================================
+
     private void ThrowIfDisposed()
     {
         if (_disposed)
+        {
             throw new ObjectDisposedException(nameof(UnitOfWork));
+        }
     }
 
     // =========================================================
-    // DISPOSE (OWNERSHIP RULE)
+    // DISPOSE
     // =========================================================
+
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+        {
+            return;
+        }
 
         try
         {
@@ -201,11 +232,13 @@ public sealed class UnitOfWork : IUnitOfWork
             _transaction = null;
 
             if (Sql is IDisposable disposable)
+            {
                 disposable.Dispose();
+            }
 
             _dbConnection?.Dispose();
             _dbConnection = null;
-            // Release cached repositories.
+
             _repositories.Clear();
         }
         finally

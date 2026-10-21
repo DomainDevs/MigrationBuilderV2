@@ -122,24 +122,21 @@ public sealed class SqlProcessExecutor
         }
     }
 
-    private static IEnumerable<string> SplitBatches(
-        string sql)
+
+    private static IEnumerable<string> SplitBatches(string sql)
     {
         ArgumentNullException.ThrowIfNull(sql);
 
-        StringBuilder batch =
-            new();
-
-        using StringReader reader =
-            new(sql);
+        StringBuilder batch = new();
+        using StringReader reader = new(sql);
 
         string? line;
+        bool inBlockComment = false;
 
         while ((line = reader.ReadLine()) is not null)
         {
-            if (line.Trim().Equals(
-                    "GO",
-                    StringComparison.OrdinalIgnoreCase))
+            if (!inBlockComment &&
+                line.Trim().Equals("GO", StringComparison.OrdinalIgnoreCase))
             {
                 if (batch.Length > 0)
                 {
@@ -151,9 +148,61 @@ public sealed class SqlProcessExecutor
             }
 
             batch.AppendLine(line);
+
+            // Mantiene el estado de comentarios multilínea entre líneas.
+            // Ignora /* y */ que aparezcan dentro de cadenas SQL.
+            bool inString = false;
+
+            for (int i = 0; i < line.Length; i++)
+            {
+                char c = line[i];
+                char next = i + 1 < line.Length ? line[i + 1] : '\0';
+
+                if (inBlockComment)
+                {
+                    if (c == '*' && next == '/')
+                    {
+                        inBlockComment = false;
+                        i++;
+                    }
+
+                    continue;
+                }
+
+                if (inString)
+                {
+                    if (c == '\'')
+                    {
+                        if (next == '\'')
+                        {
+                            i++;
+                        }
+                        else
+                        {
+                            inString = false;
+                        }
+                    }
+
+                    continue;
+                }
+
+                if (c == '-' && next == '-')
+                    break;
+
+                if (c == '/' && next == '*')
+                {
+                    inBlockComment = true;
+                    i++;
+                    continue;
+                }
+
+                if (c == '\'')
+                    inString = true;
+            }
         }
 
         if (batch.Length > 0)
             yield return batch.ToString();
     }
+
 }

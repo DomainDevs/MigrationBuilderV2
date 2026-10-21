@@ -14,8 +14,9 @@
     },
     "Execution": {
       "BatchSize": 16000,
-      "BulkCopyTimeout": 1200,
-      "DirectTransfer": false
+      "BulkCopyTimeout": 1800,
+      "DirectTransfer": false,
+      "TableLock": true
     }
   }
 }

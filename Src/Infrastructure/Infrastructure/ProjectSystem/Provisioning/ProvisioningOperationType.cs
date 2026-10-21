@@ -7,5 +7,8 @@ public enum ProvisioningOperationType
     CreateDirectory,
     CreateFile,
     SetAttributes,
+    ApplyReadWritePermissions,
+    DeleteFile,
+    DeleteDirectory,
     Action
 }

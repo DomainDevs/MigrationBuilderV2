@@ -69,17 +69,31 @@ internal class SqlExecutor : ISqlExecutor, IDisposable
     /// Abre la conexión de forma asíncrona real si el proveedor hereda de DbConnection,
     /// evitando bloquear el ThreadPool durante la fase de negociación de red.
     /// </summary>
-    private async Task<IDbConnection> GetOpenConnectionAsync(CancellationToken ct = default)
+
+    private async Task<IDbConnection> GetOpenConnectionAsync(
+        CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
+
         var conn = GetConnectionAndValidate();
 
         if (conn.State == ConnectionState.Closed)
         {
             if (conn is DbConnection dbConn)
+            {
                 await dbConn.OpenAsync(ct).ConfigureAwait(false);
+            }
             else
+            {
+                // Este proveedor no admite apertura asíncrona
+                // con cancelación mediante CancellationToken.
+                ct.ThrowIfCancellationRequested();
                 conn.Open();
+                ct.ThrowIfCancellationRequested();
+            }
         }
+
+        ct.ThrowIfCancellationRequested();
 
         return conn;
     }
@@ -120,6 +134,7 @@ internal class SqlExecutor : ISqlExecutor, IDisposable
     public Task<IEnumerable<T>> FromSqlAsync<T>(string sql, object? parameters)
         => FromSqlAsync<T>(sql, parameters, null);
 
+
     public async Task<IEnumerable<T>> FromSqlAsync<T>(
         string sql,
         object? parameters = null,
@@ -128,16 +143,37 @@ internal class SqlExecutor : ISqlExecutor, IDisposable
     {
         return await ExecuteSafeAsync(async () =>
         {
-            var conn = await GetOpenConnectionAsync(ct).ConfigureAwait(false);
+            _logger.LogInformation(
+                "FromSqlAsync: iniciando apertura de conexión.");
 
-            return await conn.QueryAsync<T>(new CommandDefinition(
+            var conn = await GetOpenConnectionAsync(ct)
+                .ConfigureAwait(false);
+
+            _logger.LogInformation(
+                "FromSqlAsync: conexión abierta. Tipo={ConnectionType}",
+                conn.GetType().FullName);
+
+            var command = new CommandDefinition(
                 sql,
                 parameters,
                 Tx,
                 commandTimeout ?? _defaultTimeout,
-                cancellationToken: ct)).ConfigureAwait(false);
+                cancellationToken: ct);
+
+            _logger.LogInformation(
+                "FromSqlAsync: ejecutando SQL. Timeout={Timeout}",
+                commandTimeout ?? _defaultTimeout);
+
+            var result = await conn.QueryAsync<T>(command)
+                .ConfigureAwait(false);
+
+            _logger.LogInformation(
+                "FromSqlAsync: consulta finalizada correctamente.");
+
+            return result;
         }, sql, ct).ConfigureAwait(false);
     }
+
 
     // =========================================================
     // DICTIONARY

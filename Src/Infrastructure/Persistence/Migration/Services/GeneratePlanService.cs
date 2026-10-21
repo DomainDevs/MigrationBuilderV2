@@ -491,8 +491,9 @@ public sealed class MigrationPlan
 {
     public string Version { get; set; } = "1.0";
     public int Revision { get; set; }
-    public DateTime GeneratedAt { get; set; }
+    public DateTime? GeneratedAt { get; set; }
     public bool Reprocess { get; set; } = false;
+    public MigrationHooks Hooks { get; set; } = new();
     public List<MigrationPackage> Packages { get; set; } = [];
 }
 
@@ -503,4 +504,17 @@ public sealed class MigrationPackage
     public bool Enabled { get; set; } = true;
     public bool Approved { get; set; } = false;
     public bool SelfContainedEtl { get; set; } = false;
+}
+
+public sealed class MigrationHooks
+{
+    public MigrationHook Pre { get; set; } = new();
+    public MigrationHook Post { get; set; } = new();
+}
+
+public sealed class MigrationHook
+{
+    public bool Enabled { get; set; } = false;
+    public bool Approved { get; set; } = false;
+    
 }

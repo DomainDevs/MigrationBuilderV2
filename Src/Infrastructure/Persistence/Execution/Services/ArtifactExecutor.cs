@@ -325,7 +325,10 @@ public sealed class ArtifactExecutor
                     "Migration:Execution:BulkCopyTimeout"),
 
             DirectTransfer = _configuration.GetValue<bool>(
-                "Migration:Execution:DirectTransfer")
+                "Migration:Execution:DirectTransfer"),
+
+            TableLock = _configuration.GetValue<bool>(
+                "Migration:Execution:TableLock")
         };
 
         List<TableMetadata> artifactMetadata =

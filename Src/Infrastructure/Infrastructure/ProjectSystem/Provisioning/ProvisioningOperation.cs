@@ -1,5 +1,4 @@
-﻿
-namespace Infrastructure.ProjectSystem.Provisioning;
+﻿namespace Infrastructure.ProjectSystem.Provisioning;
 
 internal sealed class ProvisioningOperation
 {
@@ -8,5 +7,5 @@ internal sealed class ProvisioningOperation
     public string? Content { get; set; }
     public FileAttributes Attributes { get; set; }
     public Action? Callback { get; set; }
+    public bool Recursive { get; set; }
 }
-

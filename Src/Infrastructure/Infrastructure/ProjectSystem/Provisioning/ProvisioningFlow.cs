@@ -1,4 +1,7 @@
-﻿namespace Infrastructure.ProjectSystem.Provisioning;
+﻿using System.Security.AccessControl;
+using System.Security.Principal;
+
+namespace Infrastructure.ProjectSystem.Provisioning;
 
 /// <summary>
 /// Defines a provisioning flow that builds and executes
@@ -115,6 +118,90 @@ public sealed class ProvisioningFlow : IDisposable
         return this;
     }
 
+
+    public ProvisioningFlow AssignReadWritePermissions(string path)
+    {
+        EnsureNotExecuted();
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        _operations.Add(
+            new ProvisioningOperation
+            {
+                Type = ProvisioningOperationType.ApplyReadWritePermissions,
+                Path = path
+            });
+
+        return this;
+    }
+
+    private static void ApplyReadWritePermissions(string path)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            throw new PlatformNotSupportedException(
+                "Esta operación requiere Windows.");
+        }
+
+        if (!Directory.Exists(path))
+        {
+            throw new DirectoryNotFoundException(
+                $"No existe la carpeta '{path}'.");
+        }
+
+        using WindowsIdentity identity = WindowsIdentity.GetCurrent();
+
+        SecurityIdentifier sid = identity.User
+            ?? throw new InvalidOperationException(
+                "No se pudo obtener el SID del usuario actual.");
+
+        DirectoryInfo directory = new(path);
+        DirectorySecurity security = directory.GetAccessControl();
+
+        var rule = new FileSystemAccessRule(
+            sid,
+            FileSystemRights.Modify,
+            InheritanceFlags.ContainerInherit |
+            InheritanceFlags.ObjectInherit,
+            PropagationFlags.None,
+            AccessControlType.Allow);
+
+        security.SetAccessRule(rule);
+        directory.SetAccessControl(security);
+    }
+
+    public ProvisioningFlow DeleteFile(string path)
+    {
+        EnsureNotExecuted();
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        _operations.Add(
+            new ProvisioningOperation
+            {
+                Type = ProvisioningOperationType.DeleteFile,
+                Path = path
+            });
+
+        return this;
+    }
+
+    public ProvisioningFlow DeleteDirectory(
+        string path,
+        bool recursive = false)
+    {
+        EnsureNotExecuted();
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        _operations.Add(
+            new ProvisioningOperation
+            {
+                Type = ProvisioningOperationType.DeleteDirectory,
+                Path = path,
+                Recursive = recursive
+            });
+
+        return this;
+    }
+
     /// <summary>
     /// Executes all queued operations sequentially.
     /// The flow is automatically released after execution.
@@ -185,6 +272,32 @@ public sealed class ProvisioningFlow : IDisposable
                     case ProvisioningOperationType.Action:
 
                         operation.Callback!.Invoke();
+
+                        break;
+
+                    case ProvisioningOperationType.ApplyReadWritePermissions:
+                        
+                        ApplyReadWritePermissions(operation.Path!);
+
+                        break;
+
+                    case ProvisioningOperationType.DeleteFile:
+
+                        if (File.Exists(operation.Path!))
+                        {
+                            File.Delete(operation.Path!);
+                        }
+
+                        break;
+
+                    case ProvisioningOperationType.DeleteDirectory:
+
+                        if (Directory.Exists(operation.Path!))
+                        {
+                            Directory.Delete(
+                                operation.Path!,
+                                recursive: operation.Recursive);
+                        }
 
                         break;
                 }
