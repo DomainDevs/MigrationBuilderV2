@@ -3,81 +3,128 @@ using System.Text.Json;
 
 namespace Persistence.Execution.Helpers;
 
-
-public class LogWriterJSON
+public sealed class LogWriterJSON
 {
     private readonly string _carpetaBase;
 
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = true
+    };
+
     public LogWriterJSON(string carpetaBase)
     {
-        if (string.IsNullOrWhiteSpace(carpetaBase))
-            throw new ArgumentException("Debe indicar una carpeta base para los logs.", nameof(carpetaBase));
+        ArgumentException.ThrowIfNullOrWhiteSpace(carpetaBase);
 
-        _carpetaBase = carpetaBase;
+        _carpetaBase = Path.GetFullPath(carpetaBase);
 
-        if (!Directory.Exists(_carpetaBase))
-            Directory.CreateDirectory(_carpetaBase);
+        Directory.CreateDirectory(_carpetaBase);
     }
 
     /// <summary>
-    /// Escribe el log en un archivo JSON
+    /// Escribe el registro de ejecución de un paquete en un archivo JSON
+    /// independiente. No elimina logs anteriores.
     /// </summary>
-    /// <param name="nombreArchivo">Nombre del archivo sin extensión</param>
-    /// <param name="entradas">Lista de logs a escribir</param>
-    public void EscribirLog(string nombreArchivo, List<LogEntry> entradas)
+    /// <param name="nombreArchivo">Nombre del paquete o proceso, sin extensión.</param>
+    /// <param name="entradas">Registros de los artefactos ejecutados.</param>
+    public void EscribirLog(
+        string nombreArchivo,
+        List<LogEntry> entradas)
     {
-        if (entradas == null || entradas.Count == 0)
-            return; // No hay nada que escribir
+        ArgumentException.ThrowIfNullOrWhiteSpace(nombreArchivo);
+        ArgumentNullException.ThrowIfNull(entradas);
 
-        string archivo = Path.Combine(_carpetaBase, $"{nombreArchivo}_{DateTime.Now:yyyyMMdd_HHmmss}.json");
+        if (entradas.Count == 0)
+            return;
 
-        // Obtenemos el nombre del Excel de la primera entrada si existe
-        //string excelPath = entradas.Count > 0 ? entradas[0].FileXLS ?? "" : "";
+        Directory.CreateDirectory(_carpetaBase);
+
+        string nombreSeguro = SanitizeFileName(nombreArchivo);
+
+        // Incluye fracciones de segundo para reducir colisiones
+        // cuando varios paquetes terminan concurrentemente.
+        string timestamp = DateTime.UtcNow.ToString(
+            "yyyyMMdd_HHmmss_fffffff");
+
+        string archivo = Path.Combine(
+            _carpetaBase,
+            $"{nombreSeguro}_{timestamp}.json");
+
+        string archivoTemporal = Path.Combine(
+            _carpetaBase,
+            $".{nombreSeguro}_{Guid.NewGuid():N}.tmp");
+
+        DateTime createdAt = DateTime.Now;
 
         var reporte = new
         {
             Job = nombreArchivo,
-            CreatedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"),
+            CreatedAt = createdAt.ToString("yyyy-MM-dd HH:mm:ss.fff"),
             StepCount = entradas.Count,
-            Success = entradas.Count(e => e.Ok),
-            Failed = entradas.Count(e => !e.Ok),
-            //ExcelPath = excelPath, // Solo en la raíz
-            Steps = entradas.ConvertAll(e => new
+            Success = entradas.Count(entry => entry.Ok),
+            Failed = entradas.Count(entry => !entry.Ok),
+
+            Steps = entradas.Select(entry => new
             {
-                e.Name,
-                Start = e.Start.ToString("HH:mm:ss.fff"),
-                End = e.End.ToString("HH:mm:ss.fff"),
-                Elapsed = (e.End - e.Start).TotalSeconds,
-                e.Ok,
-                e.Msg
-                // 🔹 Aquí ya no ponemos FileXLS
-            })
+                entry.Name,
+                Start = entry.Start.ToString("HH:mm:ss.fff"),
+                End = entry.End.ToString("HH:mm:ss.fff"),
+                Elapsed = Math.Max(
+                    0,
+                    (entry.End - entry.Start).TotalSeconds),
+                entry.Ok,
+                entry.Msg
+            }).ToList()
         };
 
-        var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
-
-        string json = JsonSerializer.Serialize(reporte, jsonOptions);
-        File.WriteAllText(archivo, json);
-
-        //Limpiar
-        DeleteOldFiles();
-
-        Console.ForegroundColor = ConsoleColor.Cyan;
-        Console.WriteLine($"\nReporte JSON generado: {archivo}");
-        Console.ResetColor();
-    }
-    private void DeleteOldFiles()
-    {
-        FileInfo[] files =
-            new DirectoryInfo(_carpetaBase)
-                .GetFiles("*.json")
-                .OrderByDescending(f => f.CreationTimeUtc)
-                .ToArray();
-
-        foreach (FileInfo file in files.Skip(10))
+        try
         {
-            file.Delete();
+            string json = JsonSerializer.Serialize(
+                reporte,
+                JsonOptions);
+
+            // Escribir primero un archivo temporal en la misma carpeta.
+            File.WriteAllText(archivoTemporal, json);
+
+            // Publicar el reporte solo cuando el JSON esté completo.
+            File.Move(archivoTemporal, archivo);
+
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine(
+                $"Reporte JSON generado: {archivo}");
+            Console.ResetColor();
+        }
+        finally
+        {
+            // Si falla la escritura, limpiar el temporal cuando sea posible.
+            if (File.Exists(archivoTemporal))
+                File.Delete(archivoTemporal);
         }
     }
 
+    private static string SanitizeFileName(string nombreArchivo)
+    {
+        char[] invalidChars = Path.GetInvalidFileNameChars();
+
+        HashSet<char> invalid = new(invalidChars)
+        {
+            '/',
+            '\\'
+        };
+
+        string result = new(
+            nombreArchivo
+                .Select(character =>
+                    invalid.Contains(character) ||
+                    char.IsControl(character)
+                        ? '_'
+                        : character)
+                .ToArray());
+
+        result = result.Trim().Trim('.');
+
+        return string.IsNullOrWhiteSpace(result)
+            ? "Execution"
+            : result;
+    }
 }
